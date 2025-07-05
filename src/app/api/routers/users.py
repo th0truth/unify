@@ -1,83 +1,109 @@
 from typing import Annotated, Optional, List
 from fastapi import (
-    APIRouter,
-    Security,
-    Depends,
-    Body,
-    Path,
+  APIRouter,
+  HTTPException,
+  status,
+  Security,
+  Depends,
+  Path,
+  Query,
+  Body,
 )
-
-from core.db import MongoClient
-
 from core.schemas.user import UserBase, UserUpdate
+from core.db import MongoClient
 from api.dependencies import (
-    get_mongo_client,
-    get_current_user
+  get_mongo_client,
+  get_current_user
 )
 import crud
 
 router = APIRouter(tags=["Users"])
     
-@router.get("/read/{edbo_id}", response_model=UserBase,
-    dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
+@router.get("/{edbo_id}",
+  status_code=status.HTTP_200_OK,
+  response_model=UserBase,
+  dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def read_user(
-        edbo_id: Annotated[int, Path],
-        mongo: Annotated[MongoClient, Depends(get_mongo_client)]
-    ):
-    """
-    Return user data by `edbo_id`.
-    """
-    user_db = mongo.get_database("users")
-    return await crud.read_user(user_db, edbo_id=edbo_id)
+  edbo_id: Annotated[int, Path()],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Returns user data by `edbo_id`.
+  """
+  users_db = mongo.get_database("users")
+  user = await crud.read_user(users_db, edbo_id=edbo_id)
+  if not user:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="User not found."
+    )
+  return user
 
-@router.get("/read/{role}/all", response_model=List[UserBase],
-    dependencies=[Security(get_current_user, scopes=["admin"])])
+@router.get("/{role}/all",
+  status_code=status.HTTP_200_OK,
+  response_model=List[UserBase],
+  dependencies=[Security(get_current_user, scopes=["admin"])])
 async def read_users(
-        role: Annotated[str, Path],
-        filter: Annotated[None, Optional[str]],
-        value: Annotated[None, Optional[str]],
-        mongo: Annotated[MongoClient, Depends(get_mongo_client)]   
-    ):
-    """
-    Return all users.
-    """
-    user_db = mongo.get_database("users")
-    return await crud.read_users(user_db, role=role, filter=filter, value=value)
+  role: Annotated[str, Path()],
+  filter: Annotated[str, Query()],
+  value: Annotated[str, Query()],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]   
+):
+  """
+  Returns all users.
+  """
+  users_db = mongo.get_database("users")
+  return await crud.read_users(users_db, role=role, filter=filter, value=value)
 
-@router.patch("/update/{edbo_id}",
-    dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
-async def update_user(
-        edbo_id: Annotated[int, Path],
-        update_doc: Annotated[UserUpdate, Body],
-        mongo: Annotated[MongoClient, Depends(get_mongo_client)]
-    ):
-    """
-    Update user data by `edbo_id`.
-    """
-    user_db = mongo.get_database("users")
-    await crud.update_user(user_db, edbo_id=edbo_id, update_doc=update_doc)
-
-@router.patch("/update/all",
-    dependencies=[Security(get_current_user, scopes=["admin"])])
+@router.patch("/{role}/update",
+  status_code=status.HTTP_200_OK,
+  dependencies=[Security(get_current_user, scopes=["admin"])])
 async def update_all_users(
-        role: Annotated[str, Path],
-        update_doc: Annotated[UserUpdate, Body],
-        mongo: Annotated[MongoClient, Depends(get_mongo_client)]
-    ):
-    """
-    Update users data.
-    """
-    user_db = mongo.get_database("users")
-    await crud.update_all_users(user_db, role=role, update_doc=update_doc)
+  role: Annotated[str, Path()],
+  update_user: Annotated[UserUpdate, Body()],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Updates users data.
+  """
+  users_db = mongo.get_database("users")
+  await crud.update_all_users(users_db, role=role, update_doc=update_user)
+  raise HTTPException(
+    status_code=status.HTTP_200_OK,
+    detail="User accounts has been updated."
+  )
 
-@router.delete("/delete/{edbo_id}",
-    dependencies=[Security(get_current_user, scopes=["admin"])])
+@router.patch("/{edbo_id}/update",
+  status_code=status.HTTP_200_OK,
+  dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
+async def update_user(
+  edbo_id: Annotated[int, Path()],
+  update_user: Annotated[UserUpdate, Body()],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Updates user data by `edbo_id`.
+  """
+  users_db = mongo.get_database("users")
+  await crud.update_user(users_db, edbo_id=edbo_id, update_doc=update_user)
+  raise HTTPException(
+    status_code=status.HTTP_200_OK,
+    detail="The user account has been updated."
+  )
+
+@router.delete("/{edbo_id}/delete",
+  status_code=status.HTTP_200_OK,
+  dependencies=[Security(get_current_user, scopes=["admin"])])
 async def delete_user(
-        edbo_id: Annotated[int, Path],
-        mongo: Annotated[MongoClient, Depends(get_mongo_client)] 
-    ):
-    """
-    Delete an exiting user account.
-    """
-    user_db = mongo.get_database("users")
-    return await crud.delete_user(user_db, edbo_id=edbo_id)
+  edbo_id: Annotated[int, Path()],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)] 
+):
+  """
+  Deletes an exiting user account.
+  """
+  users_db = mongo.get_database("users")
+  await crud.delete_user(users_db, edbo_id=edbo_id)
+  raise HTTPException(
+      status_code=status.HTTP_200_OK,
+      detail="The user account has been deleted"
+  )

@@ -1,71 +1,78 @@
 from typing import Annotated
 from fastapi import (
-    HTTPException,
-    APIRouter,
-    status,
-    Security,
-    Depends,
-    Path,
-    Body
+  HTTPException,
+  APIRouter,
+  status,
+  Security,
+  Depends,
+  Path,
+  Body
 )
-
-from core.db import MongoClient
-
 from core.schemas.student import StudentBase
-from core.schemas.teacher import TeacherCreate
+from core.schemas.teacher import TeacherBase, TeacherCreate
 from core.schemas.grade import SetGrade
+from core.db import MongoClient
 from api.dependencies import (
-    get_mongo_client,
-    get_current_user
+  get_mongo_client,
+  get_current_user
 )
 import crud
 
 router = APIRouter(tags=["Teachers"])
 
 @router.post("/create",
-    dependencies=[Security(get_current_user, scopes=["admin"])])
+  status_code=status.HTTP_201_CREATED,
+  response_model=TeacherBase,
+  dependencies=[Security(get_current_user, scopes=["admin"])])
 async def create_teacher(
-        teacher_create: Annotated[TeacherCreate, Body],
-        mongo: Annotated[MongoClient, Depends(get_mongo_client)]
-    ):
-    """
-    Create a teacher account.
-    """
-    user_db = mongo.get_database("users")
-    return await crud.create_user(user_db, user=teacher_create)
+  create_teacher: Annotated[TeacherCreate, Body()],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Creates a teacher account.
+  """
+  users_db = mongo.get_database("users")
+  teacher = TeacherBase.model_validate(
+    await crud.create_user(users_db, user=create_teacher)  
+  )
+  return teacher
 
-@router.patch("/assessment/{edbo_id}/grade")
+@router.patch("/assessment/{edbo_id}",
+  status_code=status.HTTP_200_OK)
 async def assessment_grade(
-        edbo_id: Annotated[int, Path],
-        body: Annotated[SetGrade, Body],
-        teacher: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
-        mongo: Annotated[MongoClient, Depends(get_mongo_client)]
-    ):
-    """
-    Assess the student
-    """
-    if body.subject not in teacher["disciplines"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this discipline."
-        )
-    user_db = mongo.get_database("users")
-    collection = user_db.get_collection("students")
-    student = StudentBase(**await collection.find_one({"edbo_id": edbo_id}))
-    if not student:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Student not found."
-        )
-    grade_db = mongo.get_database("grades")
-    collection = grade_db.get_collection(student.group)
-    await collection.update_one(
-        filter={"edbo_id": edbo_id},
-        update={
-            "$set": {f"disciplines.{body.subject}.{body.date}": body.grade}
-        }
-    )
+  edbo_id: Annotated[int, Path()],
+  body: Annotated[SetGrade, Body()],
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Assesses the student.
+  """
+  teacher = TeacherBase.model_validate(user)
+
+  if body.subject not in teacher.disciplines:
     raise HTTPException(
-        status_code=status.HTTP_200_OK,
-        detail="Student grade successfully added."
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="You don't have access to this discipline."
     )
+  
+  users_db = mongo.get_database("users")
+  collection = users_db.get_collection("students")
+  if not (user := await collection.find_one({"edbo_id": edbo_id})):
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Student not found."
+    )
+  student = StudentBase.model_validate(user)
+  
+  grades_db = mongo.get_database("grades")
+  collection = grades_db.get_collection(student.group)
+  await collection.update_one(
+    filter={"edbo_id": edbo_id},
+    update={"$set": {f"disciplines.{body.subject}.{body.date}": body.grade}}
+  )
+
+  raise HTTPException(
+    status_code=status.HTTP_200_OK,
+    detail="Student successfully assessed."
+  )

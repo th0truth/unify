@@ -10,16 +10,14 @@ from fastapi import (
   Body
 )
 from uuid import uuid4
-
-from core.db import MongoClient
-
-from core.schemas.student import StudentBase
-from core.schemas.teacher import TeacherBase
 from core.schemas.schedule import (
   ScheduleBase,
   ScheduleCreate,
   SchedulePrivate
 )
+from core.schemas.student import StudentBase
+from core.schemas.teacher import TeacherBase
+from core.db import MongoClient
 from api.dependencies import (
   get_mongo_client,
   get_current_user
@@ -50,8 +48,8 @@ async def create_schedule(
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
     collection = groups_db.get_collection(degree)
-    group = await collection.find_one({"group": schedule.group})
-    if group: break
+    if (group := await collection.find_one({"group": schedule.group})):
+      break
   if not group:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
@@ -94,8 +92,8 @@ async def get_current_user_schedule(
       grades_db = mongo.get_database("grades")
       grades_doc = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group)
       
-      user_db = mongo.get_database("users")
-      collection = user_db.get_collection("teachers")
+      users_db = mongo.get_database("users")
+      collection = users_db.get_collection("teachers")
       for lesson in schedule:
         teacher = await collection.find_one({"edbo_id": lesson.pop("teacher_edbo")})
         lesson.update(
@@ -149,8 +147,7 @@ async def get_schedule_by_id(
       detail="Given group not found."
     )
 
-  lesson = await collection.find_one({"lesson_id": id})
-  if not lesson:
+  if not (lesson := await collection.find_one({"lesson_id": id})):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Lesson not found."

@@ -48,7 +48,10 @@ class Settings(BaseSettings):
   # JWT settings
   JWT_ALGORITHM: str = "RS256"
   JWT_EXPIRE_MINUTES: int | float
-  
+
+  MAILGUN_API_KEY: str
+  MAILGUN_DOMAIN_NAME: str
+
   scopes: Dict[str, Any] = {
     "student": "",
     "teacher": "",
