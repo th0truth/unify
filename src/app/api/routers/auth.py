@@ -62,8 +62,7 @@ async def auth_token(
   Log in using an access token.
   """
   # Decode a user's JWT
-  payload = OAuthJWTBearer.decode(token.access_token)
-  if not payload:
+  if not (payload := OAuthJWTBearer.decode(token.access_token)):
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
       detail="Invalid token."

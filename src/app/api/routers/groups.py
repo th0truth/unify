@@ -20,7 +20,7 @@ from api.dependencies import (
 
 router = APIRouter(tags=["Groups"])
 
-async def get_disciplines(mongo: MongoClient, *, group: dict) -> dict:
+async def get_detail_disciplines(mongo: MongoClient, *, group: dict) -> dict:
   users_db = mongo.get_database("users")
   collection = users_db.get_collection("teachers")
   group.update(
@@ -64,7 +64,7 @@ async def get_current_user_group(
       detail="Group not found"
     )
   
-  group = await get_disciplines(mongo, group=group)
+  group = await get_detail_disciplines(mongo, group=group)
   return group
 
 @router.get("/all",
@@ -101,17 +101,16 @@ async def get_group(
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
     collection = groups_db.get_collection(degree)
-    if (group := await collection.find_one({"group": group})):
+    if (student_group := await collection.find_one({"group": group})):
       break
-  
-  if not group:
+  if not student_group:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Group not found."
     )
   
-  group = await get_disciplines(mongo, group=group)
-  return group
+  student_group = await get_detail_disciplines(mongo, group=student_group)
+  return student_group
 
 @router.post("/create",
   status_code=status.HTTP_201_CREATED,
@@ -160,17 +159,16 @@ async def delete_group(
   groups_db = mongo.get_database("groups") 
   for degree in await groups_db.list_collection_names():
     collection = groups_db.get_collection(degree)
-    group = await collection.find_one({"group": group})
-    if group: break
-  
-  if not group:
+    if (student_group := await collection.find_one({"group": group})):
+      break
+  if not student_group:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
-      detail="Given group not found."
+      detail="Group not found."
     )
   
-  await collection.delete_one(group)
-  
+  await collection.delete_one(student_group)
+
   raise HTTPException(
     status_code=status.HTTP_200_OK,
     detail="The group has been deleted."

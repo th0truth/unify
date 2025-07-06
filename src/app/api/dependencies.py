@@ -76,6 +76,6 @@ async def get_current_user(
       if scope not in security_scopes.scopes:
         raise HTTPException(
           status_code=status.HTTP_404_NOT_FOUND,
-          detail="Not enough permissions"
+          detail="Not enough permissions."
         )
   return user

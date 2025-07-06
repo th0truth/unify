@@ -41,7 +41,7 @@ async def create_teacher(
   status_code=status.HTTP_200_OK)
 async def assessment_grade(
   edbo_id: Annotated[int, Path()],
-  body: Annotated[SetGrade, Body()],
+  grade_body: Annotated[SetGrade, Body()],
   user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
@@ -50,7 +50,7 @@ async def assessment_grade(
   """
   teacher = TeacherBase.model_validate(user)
 
-  if body.subject not in teacher.disciplines:
+  if grade_body.subject not in teacher.disciplines:
     raise HTTPException(
       status_code=status.HTTP_403_FORBIDDEN,
       detail="You don't have access to this discipline."
@@ -69,7 +69,7 @@ async def assessment_grade(
   collection = grades_db.get_collection(student.group)
   await collection.update_one(
     filter={"edbo_id": edbo_id},
-    update={"$set": {f"disciplines.{body.subject}.{body.date}": body.grade}}
+    update={"$set": {f"disciplines.{grade_body.subject}.{grade_body.date}": grade_body.grade}}
   )
 
   raise HTTPException(

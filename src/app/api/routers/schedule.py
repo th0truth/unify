@@ -1,5 +1,4 @@
 from typing import Annotated, List
-from fastapi.responses import JSONResponse 
 from fastapi import (
   HTTPException,
   APIRouter,
@@ -25,51 +24,6 @@ from api.dependencies import (
 import crud
 
 router = APIRouter(tags=["Schedule"])
-
-@router.post("/create",
-  status_code=status.HTTP_201_CREATED,
-  response_model=ScheduleBase)
-async def create_schedule(
-  schedule: Annotated[ScheduleCreate, Body()],
-  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
-):
-  """
-  Creates a schedule.
-  """
-  teacher = TeacherBase.model_validate(user)
-
-  if schedule.subject not in teacher.disciplines:
-    raise HTTPException(
-      status_code=status.HTTP_403_FORBIDDEN,
-      detail="You don't have access to this discipline."
-    )
-
-  groups_db = mongo.get_database("groups")
-  for degree in await groups_db.list_collection_names():
-    collection = groups_db.get_collection(degree)
-    if (group := await collection.find_one({"group": schedule.group})):
-      break
-  if not group:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Given group not found."
-    )
-  
-  schedule_db = mongo.get_database("schedule")
-  collection = schedule_db.get_collection(schedule.group)
-  
-  schedule_private = SchedulePrivate(
-    **schedule.model_dump(),
-    teacher_edbo=teacher.edbo_id,
-    lesson_id=str(uuid4())
-  )
-
-  await collection.insert_one(
-    schedule_private.model_dump(exclude_none=True)
-  )
-
-  return schedule
 
 @router.get("/my",
   status_code=status.HTTP_200_OK,
@@ -105,8 +59,8 @@ async def get_current_user_schedule(
       teacher = TeacherBase.model_validate(user)
       for group in await schedule_db.list_collection_names():
         collection = schedule_db.get_collection(group)
-        schedule = await collection.find({"teacher_edbo": teacher.edbo_id}).to_list()
-        if schedule: break
+        if (schedule := await collection.find({"teacher_edbo": teacher.edbo_id}).to_list()):
+          break
       return schedule
 
 @router.get("/{group}",
@@ -153,6 +107,51 @@ async def get_schedule_by_id(
       detail="Lesson not found."
     )
   return lesson
+
+@router.post("/create",
+  status_code=status.HTTP_201_CREATED,
+  response_model=ScheduleBase)
+async def create_schedule(
+  schedule: Annotated[ScheduleCreate, Body()],
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
+):
+  """
+  Creates a schedule.
+  """
+  teacher = TeacherBase.model_validate(user)
+
+  if schedule.subject not in teacher.disciplines:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="You don't have access to this discipline."
+    )
+
+  groups_db = mongo.get_database("groups")
+  for degree in await groups_db.list_collection_names():
+    collection = groups_db.get_collection(degree)
+    if (group := await collection.find_one({"group": schedule.group})):
+      break
+  if not group:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Given group not found."
+    )
+  
+  schedule_db = mongo.get_database("schedule")
+  collection = schedule_db.get_collection(schedule.group)
+  
+  schedule_private = SchedulePrivate(
+    **schedule.model_dump(),
+    teacher_edbo=teacher.edbo_id,
+    lesson_id=str(uuid4())
+  )
+
+  await collection.insert_one(
+    schedule_private.model_dump(exclude_none=True)
+  )
+
+  return schedule
 
 @router.put("/{group}/{id}/update",
   status_code=status.HTTP_200_OK,
@@ -214,14 +213,13 @@ async def delete_schedule(
     )
 
   collection = schedule_db.get_collection(group)
-  lesson = await collection.find_one_and_delete({"lesson_id": id})
-  if not lesson:
+  if not await collection.find_one_and_delete({"lesson_id": id}):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Lesson not found."
     )
   
-  return JSONResponse(
+  raise HTTPException(
     status_code=status.HTTP_200_OK,
-    content={"msg": "The lesson has been removed."}
+    detail="The lesson has been deleted."
   )

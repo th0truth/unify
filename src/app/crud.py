@@ -4,7 +4,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from core.config import settings
 from core.security.utils import Hash
-from core.schemas.user import UserBase, UserCreate
+from core.schemas.user import UserBase
 
 async def get_user_by_username(db: AsyncDatabase, *, username: int | str, exclude: Optional[list] = None) -> dict:
   """
@@ -100,5 +100,5 @@ async def get_grades(db: AsyncDatabase, *, edbo_id: int, group: str, **kwargs) -
   if subject: return disciplines.get(subject, {})
   result = {}
   for subject, records in disciplines.items():
-      result[subject] = records.get(date) if date else records
+    result[subject] = records.get(date) if date else records
   return result
