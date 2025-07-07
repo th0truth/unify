@@ -8,7 +8,7 @@ from fastapi import (
   Path,
   Body
 )
-from uuid import uuid4
+import uuid
 from core.schemas.schedule import (
   ScheduleBase,
   ScheduleCreate,
@@ -146,7 +146,7 @@ async def create_schedule(
   schedule_private = SchedulePrivate(
     **schedule.model_dump(),
     teacher_edbo=teacher.edbo_id,
-    lesson_id=str(uuid4())
+    lesson_id=str(uuid.uuid4())
   )
 
   await collection.insert_one(
