@@ -39,7 +39,7 @@ async def create_teacher(
 
 @router.patch("/assessment/{edbo_id}",
   status_code=status.HTTP_200_OK)
-async def assessment_grade(
+async def student_assessment(
   edbo_id: Annotated[int, Path()],
   grade_body: Annotated[SetGrade, Body()],
   user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
@@ -50,12 +50,6 @@ async def assessment_grade(
   """
   teacher = TeacherBase.model_validate(user)
 
-  if grade_body.subject not in teacher.disciplines:
-    raise HTTPException(
-      status_code=status.HTTP_403_FORBIDDEN,
-      detail="You don't have access to this discipline."
-    )
-  
   users_db = mongo.get_database("users")
   collection = users_db.get_collection("students")
   if not (user := await collection.find_one({"edbo_id": edbo_id})):
@@ -64,13 +58,28 @@ async def assessment_grade(
       detail="Student not found."
     )
   student = StudentBase.model_validate(user)
+
+  if grade_body.subject not in teacher.disciplines:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="You don't have access to this discipline."
+    )
   
   grades_db = mongo.get_database("grades")
   collection = grades_db.get_collection(student.group)
-  await collection.update_one(
+
+  if not (await collection.find_one_and_update(
     filter={"edbo_id": edbo_id},
     update={"$set": {f"disciplines.{grade_body.subject}.{grade_body.date}": grade_body.grade}}
-  )
+  )):
+    await collection.insert_one(
+      {"edbo_id": edbo_id,
+       "disciplines": {
+         grade_body.grade: {
+           grade_body.date: grade_body.grade
+         }
+       }}
+    )
 
   raise HTTPException(
     status_code=status.HTTP_200_OK,
