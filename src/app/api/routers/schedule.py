@@ -14,6 +14,7 @@ from core.schemas.schedule import (
   ScheduleCreate,
   SchedulePrivate
 )
+from core.schemas.user import UserBase
 from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase
 from core.db import MongoClient
@@ -56,11 +57,12 @@ async def get_current_user_schedule(
       return schedule
 
     case "teachers":
-      teacher = TeacherBase.model_validate(user)
+      teacher = UserBase.model_validate(user)
       for group in await schedule_db.list_collection_names():
         collection = schedule_db.get_collection(group)
-        if (schedule := await collection.find({"teacher_edbo": teacher.edbo_id}).to_list()):
-          break
+        schedule = await collection.find({"teacher_edbo": teacher.edbo_id}).to_list()
+        for lesson in schedule:
+          lesson.update({"teacher": teacher})
       return schedule
 
 @router.get("/{group}",
