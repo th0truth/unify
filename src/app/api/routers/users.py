@@ -10,9 +10,11 @@ from fastapi import (
   Body,
 )
 from core.schemas.user import UserBase, UserUpdate
+from redis.asyncio import Redis
 from core.db import MongoClient
 from api.dependencies import (
   get_mongo_client,
+  get_redis_client,
   get_current_user
 )
 import crud
@@ -79,13 +81,20 @@ async def update_all_users(
 async def update_user(
   edbo_id: Annotated[int, Path()],
   update_user: Annotated[UserUpdate, Body()],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
+  redis: Annotated[Redis, Depends(get_redis_client)]
 ):
   """
   Updates user data by `edbo_id`.
   """
   users_db = mongo.get_database("users")
+  
+  # Update the user data
   await crud.update_user(users_db, edbo_id=edbo_id, update_doc=update_user)
+  
+  # Delete the user data from the Redis database
+  await redis.delete(f"auth:user:{edbo_id}")
+
   raise HTTPException(
     status_code=status.HTTP_200_OK,
     detail="The user account has been updated."
@@ -96,13 +105,20 @@ async def update_user(
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def delete_user(
   edbo_id: Annotated[int, Path()],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)] 
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
+  redis: Annotated[Redis, Depends(get_redis_client)]
 ):
   """
   Deletes an exiting user account.
   """
   users_db = mongo.get_database("users")
+
+  # Delete the user account
   await crud.delete_user(users_db, edbo_id=edbo_id)
+
+  # Delete the user data from the Redis database
+  await redis.delete(f"auth:user:{edbo_id}")
+
   raise HTTPException(
       status_code=status.HTTP_200_OK,
       detail="The user account has been deleted"

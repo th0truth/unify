@@ -13,8 +13,10 @@ from core.schemas.etc import (
 )
 from core.security.utils import Hash
 from core.db import MongoClient
+from redis.asyncio import Redis
 from api.dependencies import (
   get_mongo_client,
+  get_redis_client,
   get_current_user
 )
 import crud
@@ -39,7 +41,8 @@ async def get_active_user(
 async def add_user_email(
   user_update: Annotated[UpdateEmail, Body()],
   user: Annotated[dict, Depends(get_current_user)],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
+  redis: Annotated[Redis, Depends(get_redis_client)]
 ):
   """
   Adds an email to the user account.
@@ -55,9 +58,14 @@ async def add_user_email(
   
   # Verify the user's credentials
   user = await crud.authenticate_user(users_db, username=user.get("edbo_id"), plain_pwd=user_update.password)
+  edbo_id = user.get("edbo_id")
 
   # Update the user data
-  await crud.update_user(users_db, edbo_id=user.get("edbo_id"), update_doc={"email": user_update.email})
+  await crud.update_user(users_db, edbo_id=edbo_id, update_doc={"email": user_update.email})
+
+  # Delete the user data from the Redis database
+  await redis.delete(f"auth:user:{edbo_id}")
+
   raise HTTPException(
     status_code=status.HTTP_200_OK,
     detail="Email added to the user account."
@@ -69,7 +77,8 @@ async def add_user_email(
 async def update_password_me(
   update_body: Annotated[UpdatePassword, Body()],
   user: Annotated[dict, Depends(get_current_user)],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
+  redis: Annotated[Redis, Depends(get_redis_client)]
 ):
   """
   Updates the current user's password.
@@ -83,6 +92,7 @@ async def update_password_me(
 
   # Update the user data
   await crud.update_user(users_db, edbo_id=user.get("edbo_id"), update_doc={"password": Hash.hash(plain=update_body.new_password)})
+
   raise HTTPException(
     status_code=status.HTTP_200_OK,
     detail="The password has been updated."
@@ -109,6 +119,7 @@ async def password_recovery(
   
   # Update the user data
   await crud.update_user(users_db, edbo_id=user.get("edbo_id"), update_doc={"password": Hash.hash(plain=update_body.new_password)})
+
   raise HTTPException(
     status_code=status.HTTP_200_OK,
     detail="The user's password has been recovered."

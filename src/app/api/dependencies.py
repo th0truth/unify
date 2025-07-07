@@ -5,6 +5,7 @@ from fastapi.security import (
   SecurityScopes
 )
 from redis.asyncio import Redis
+from datetime import timedelta
 import json
 
 from core.config import settings
@@ -59,12 +60,14 @@ async def get_current_user(
     # Authenticate user data from the MongoDB database
     users_db = mongo.get_database("users")
     # Validate user credentials
-    if not (user := await crud.get_user_by_username(users_db, username=username, exclude=["_id"])):
+    if not (user := await crud.get_user_by_username(users_db, username=username, exclude=["_id", "password"])):
       raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Couldn't validate user credentials.",
         headers={"WWW-Authenticate": "Bearer"}
       )
+    # Add user data to the Redis database
+    await redis.setex(f"auth:user:{username}", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
   else:
     user = json.loads(user_cache)
 
