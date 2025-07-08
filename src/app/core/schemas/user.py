@@ -6,11 +6,13 @@ from pydantic import (
 )
 from .etc import PASSWORDstr
 
-class UserBase(BaseModel):
-  edbo_id: int
+class UserInitial(BaseModel):
   first_name: str
   middle_name: str
-  last_name: str 
+  last_name: str
+
+class UserBase(UserInitial):
+  edbo_id: int
   date_of_birth: str
   role: str
 

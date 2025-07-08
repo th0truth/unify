@@ -1,20 +1,28 @@
-from typing import Annotated, List
+from typing import Annotated, List, Union, Optional
+import cloudinary.uploader
 from fastapi import (
   HTTPException,
   APIRouter,
   status,
+  UploadFile,
+  File,
   Security,
   Depends,
   Path,
   Body
 )
 import uuid
+import cloudinary
+
+from core.config import settings
+from core.security.utils import convert_size
 from core.schemas.schedule import (
   ScheduleBase,
   ScheduleCreate,
-  SchedulePrivate
+  SchedulePrivate,
+  ScheduleFile
 )
-from core.schemas.user import UserBase
+from core.schemas.user import UserInitial, UserBase
 from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase
 from core.db import MongoClient
@@ -26,9 +34,16 @@ import crud
 
 router = APIRouter(tags=["Schedule"])
 
+cloudinary.config(
+  cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+  api_key=settings.CLOUDINARY_API_KEY,
+  api_secret=settings.CLOUDINARY_API_SECRET,
+  secure=True
+)
+
 @router.get("/my",
   status_code=status.HTTP_200_OK,
-  response_model=list[SchedulePrivate],
+  response_model=List[SchedulePrivate],
   response_model_exclude_none=True)
 async def get_current_user_schedule(
   user: Annotated[dict, Security(get_current_user, scopes=["student", "teacher"])],
@@ -38,7 +53,8 @@ async def get_current_user_schedule(
   Returns the schedule for the current user. 
   """
   schedule_db = mongo.get_database("schedule")
-  match user.get("role"):
+  role = user.get("role")
+  match role:
     case "students":
       student = StudentBase.model_validate(user) 
       collection = schedule_db.get_collection(student.group)
@@ -52,7 +68,7 @@ async def get_current_user_schedule(
       for lesson in schedule:
         teacher = await collection.find_one({"edbo_id": lesson.pop("teacher_edbo")})
         lesson.update(
-          {"teacher": TeacherBase.model_validate(teacher).model_dump(),
+          {"teacher": UserInitial.model_validate(teacher),
            "grade": grades_doc.get(lesson["subject"], {}).get(lesson["date"])})
       return schedule
 
@@ -62,7 +78,7 @@ async def get_current_user_schedule(
         collection = schedule_db.get_collection(group)
         schedule = await collection.find({"teacher_edbo": teacher.edbo_id}).to_list()
         for lesson in schedule:
-          lesson.update({"teacher": teacher})
+          lesson.update({"teacher": UserInitial.model_validate(teacher)})
       return schedule
 
 @router.get("/{group}",
@@ -123,12 +139,14 @@ async def create_schedule(
   """
   teacher = TeacherBase.model_validate(user)
 
+  # Check if the teacher's subject is matches the discipline.
   if schedule.subject not in teacher.disciplines:
     raise HTTPException(
       status_code=status.HTTP_403_FORBIDDEN,
       detail="You don't have access to this discipline."
     )
 
+  # Find out the specified group.
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
     collection = groups_db.get_collection(degree)
@@ -139,21 +157,95 @@ async def create_schedule(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Given group not found."
     )
-  
-  schedule_db = mongo.get_database("schedule")
-  collection = schedule_db.get_collection(schedule.group)
-  
+
   schedule_private = SchedulePrivate(
     **schedule.model_dump(),
     teacher_edbo=teacher.edbo_id,
     lesson_id=str(uuid.uuid4())
   )
 
+  # Insert the schedule to the MongoDB database
+  schedule_db = mongo.get_database("schedule")
+  collection = schedule_db.get_collection(schedule.group)
   await collection.insert_one(
     schedule_private.model_dump(exclude_none=True)
   )
 
   return schedule
+
+@router.post("/{group}/{id}/attach",
+  status_code=status.HTTP_200_OK,
+  response_model=SchedulePrivate,
+  response_model_exclude_none=True)
+async def upload_schedule_files(
+  group: Annotated[str, Path()],
+  id: Annotated[str, Path()],
+  files: Annotated[List[UploadFile], File(...)],
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Attaches files to the lesson.
+  """
+  teacher = TeacherBase.model_validate(user)
+
+  schedule_db = mongo.get_database("schedule")
+  if group not in await schedule_db.list_collection_names():
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Group not found."
+    )
+  
+  collection = schedule_db.get_collection(group)
+  if not (lesson := await collection.find_one(
+    filter={"teacher_edbo": teacher.edbo_id, "lesson_id": id})):
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Lesson not found."
+    ) 
+
+  response_content = []
+  for file in files: 
+    try:
+      # Upload to Cloudinary
+      filename = file.filename
+      file_content = await file.read()
+      upload_result = cloudinary.uploader.upload(
+        file=file_content,
+        display_name=filename,
+        asset_folder="schedule"
+      )
+      # Append upload result to list
+      response_content.append(
+        ScheduleFile(
+          metadata={
+            "filename": filename,
+            "width": upload_result["width"],
+            "height": upload_result["height"],
+            "format": upload_result["format"],
+            "created": upload_result["created_at"],
+            "bytes": convert_size(upload_result["bytes"]),
+          },
+          url=upload_result["secure_url"],
+          group=group,
+          lesson_id=id
+        ).model_dump()
+      )
+    except:
+      raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail=f"Error attaching files."
+      )
+  
+  if not (await collection.update_one(
+    filter=lesson,
+    update={"$set": {"attachments": response_content}})
+  ):
+    raise HTTPException(
+      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+      detail="Can't attachment your files to the lesson."
+    ) 
+  return lesson
 
 @router.put("/{group}/{id}/update",
   status_code=status.HTTP_200_OK,
@@ -185,7 +277,9 @@ async def update_schedule(
 
   collection = schedule_db.get_collection(group)
   lesson = await collection.find_one_and_update(
-    {"lesson_id": id}, {"$set": schedule_update.model_dump()})
+    filter={"lesson_id": id},
+    update={"$set": schedule_update.model_dump()}
+  )
   if not lesson:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,

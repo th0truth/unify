@@ -41,10 +41,15 @@ class Settings(BaseSettings):
   REDIS_PORT: int
   REDIS_USERNAME: str
   REDIS_PASSWORD: str
-  REDIS_DB: int = 0
+  REDIS_DB: int = 0  
   
   CACHE_EXPIRE_MINUTES: int | float
   
+  # Cloudinary secrets
+  CLOUDINARY_CLOUD_NAME: str
+  CLOUDINARY_API_KEY: int
+  CLOUDINARY_API_SECRET: str
+
   # JWT settings
   JWT_ALGORITHM: str = "RS256"
   JWT_EXPIRE_MINUTES: int | float
