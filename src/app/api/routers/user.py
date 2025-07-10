@@ -66,10 +66,7 @@ async def add_user_email(
   # Delete the user data from the Redis database
   await redis.delete(f"auth:user:{edbo_id}")
 
-  raise HTTPException(
-    status_code=status.HTTP_200_OK,
-    detail="Email added to the user account."
-  )
+  return {"message": "Email added to the user account."}
 
 
 @router.patch("/password/update",
@@ -78,7 +75,6 @@ async def update_password_me(
   update_body: Annotated[UpdatePassword, Body()],
   user: Annotated[dict, Depends(get_current_user)],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
-  redis: Annotated[Redis, Depends(get_redis_client)]
 ):
   """
   Updates the current user's password.
@@ -93,10 +89,7 @@ async def update_password_me(
   # Update the user data
   await crud.update_user(users_db, edbo_id=user.get("edbo_id"), update_doc={"password": Hash.hash(plain=update_body.new_password)})
 
-  raise HTTPException(
-    status_code=status.HTTP_200_OK,
-    detail="The password has been updated."
-  )
+  return {"message": "The password has been updated."}
 
 @router.patch("/password/recovery",
   status_code=status.HTTP_200_OK)
@@ -120,7 +113,4 @@ async def password_recovery(
   # Update the user data
   await crud.update_user(users_db, edbo_id=user.get("edbo_id"), update_doc={"password": Hash.hash(plain=update_body.new_password)})
 
-  raise HTTPException(
-    status_code=status.HTTP_200_OK,
-    detail="The user's password has been recovered."
-  )
+  return {"message": "The user's password has been recovered."}

@@ -70,10 +70,8 @@ async def update_all_users(
   """
   users_db = mongo.get_database("users")
   await crud.update_all_users(users_db, role=role, update_doc=update_user)
-  raise HTTPException(
-    status_code=status.HTTP_200_OK,
-    detail="User accounts has been updated."
-  )
+  
+  return {"message": "User accounts has been updated."}
 
 @router.patch("/{edbo_id}/update",
   status_code=status.HTTP_200_OK,
@@ -95,10 +93,7 @@ async def update_user(
   # Delete the user data from the Redis database
   await redis.delete(f"auth:user:{edbo_id}")
 
-  raise HTTPException(
-    status_code=status.HTTP_200_OK,
-    detail="The user account has been updated."
-  )
+  return {"message": "The user account has been updated."}
 
 @router.delete("/{edbo_id}/delete",
   status_code=status.HTTP_200_OK,
@@ -119,7 +114,4 @@ async def delete_user(
   # Delete the user data from the Redis database
   await redis.delete(f"auth:user:{edbo_id}")
 
-  raise HTTPException(
-      status_code=status.HTTP_200_OK,
-      detail="The user account has been deleted"
-  )
+  return {"message": "The user account has been deleted."}

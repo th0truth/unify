@@ -169,7 +169,4 @@ async def delete_group(
   
   await collection.delete_one(student_group)
 
-  raise HTTPException(
-    status_code=status.HTTP_200_OK,
-    detail="The group has been deleted."
-  )
+  return {"message": "The group has been deleted."}

@@ -117,7 +117,4 @@ async def logout(
       detail="An error occured while adding JWT to blacklist."
     )
   
-  raise HTTPException(
-    status_code=status.HTTP_200_OK,
-    detail="Successfully logged out."
-  )
+  return {"message": "Successfully logged out."}

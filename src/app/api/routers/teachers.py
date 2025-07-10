@@ -80,8 +80,5 @@ async def student_assessment(
          }
        }}
     )
-
-  raise HTTPException(
-    status_code=status.HTTP_200_OK,
-    detail="Student successfully assessed."
-  )
+    
+  return {"message": "Student successfully assessed."}
