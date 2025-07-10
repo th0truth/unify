@@ -1,4 +1,5 @@
-from typing import Annotated, List, Union, Optional
+from typing import Annotated, List
+import cloudinary.exceptions
 import cloudinary.uploader
 from fastapi import (
   HTTPException,
@@ -14,17 +15,18 @@ from fastapi import (
 import uuid
 import cloudinary
 
+from core.logger import logger
 from core.config import settings
 from core.security.utils import convert_size
 from core.schemas.schedule import (
   ScheduleBase,
   ScheduleCreate,
-  SchedulePrivate,
-  ScheduleFile
+  SchedulePrivate
 )
 from core.schemas.user import UserInitial, UserBase
 from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase
+from core.schemas.etc import MetaFile
 from core.db import MongoClient
 from api.dependencies import (
   get_mongo_client,
@@ -98,18 +100,18 @@ async def get_schedule_by_group(
   schedule = await collection.find().to_list()
   return schedule
 
-@router.get("/{group}/{id}", 
+@router.get("/{group}/{lesson_id}", 
   status_code=status.HTTP_200_OK,
   response_model=SchedulePrivate,
   response_model_exclude_none=True,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def get_schedule_by_id(
   group: Annotated[str, Path()],
-  id: Annotated[str, Path()],
+  lesson_id: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
   """
-  Returns the schedule with the given `id`.
+  Returns the schedule with the given `lesson_id`.
   """
   schedule_db = mongo.get_database("schedule")
   collection = schedule_db.get_collection(group)
@@ -119,12 +121,12 @@ async def get_schedule_by_id(
       detail="Given group not found."
     )
 
-  if not (lesson := await collection.find_one({"lesson_id": id})):
+  if not (schedule_lesson := await collection.find_one({"lesson_id": lesson_id})):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Lesson not found."
     )
-  return lesson
+  return schedule_lesson
 
 @router.post("/create",
   status_code=status.HTTP_201_CREATED,
@@ -173,14 +175,14 @@ async def create_schedule(
 
   return schedule
 
-@router.post("/{group}/{id}/attach",
+@router.post("/{group}/{lesson_id}/attach",
   status_code=status.HTTP_200_OK,
-  response_model=SchedulePrivate,
+  response_model=List[MetaFile],
   response_model_exclude_none=True)
 async def upload_schedule_files(
   group: Annotated[str, Path()],
-  id: Annotated[str, Path()],
-  files: Annotated[List[UploadFile], File(...)],
+  lesson_id: Annotated[str, Path()],
+  files: Annotated[List[UploadFile], File()],
   user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
@@ -198,13 +200,13 @@ async def upload_schedule_files(
   
   collection = schedule_db.get_collection(group)
   if not (lesson := await collection.find_one(
-    filter={"teacher_edbo": teacher.edbo_id, "lesson_id": id})):
+    filter={"teacher_edbo": teacher.edbo_id, "lesson_id": lesson_id})):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Lesson not found."
     ) 
 
-  response_content = []
+  attachments = []
   for file in files: 
     try:
       # Upload to Cloudinary
@@ -213,11 +215,14 @@ async def upload_schedule_files(
       upload_result = cloudinary.uploader.upload(
         file=file_content,
         display_name=filename,
-        asset_folder="schedule"
+        asset_folder="schedule",
+        resource_type="auto",
+        use_filename=False,
+        unique_filename=True
       )
       # Append upload result to list
-      response_content.append(
-        ScheduleFile(
+      attachments.append(
+        MetaFile(
           metadata={
             "filename": filename,
             "width": upload_result["width"],
@@ -227,11 +232,17 @@ async def upload_schedule_files(
             "bytes": convert_size(upload_result["bytes"]),
           },
           url=upload_result["secure_url"],
+          file_id=upload_result["public_id"],
+          file_type=upload_result["resource_type"],
           group=group,
-          lesson_id=id
+          lesson_id=lesson_id
         ).model_dump()
       )
-    except:
+    except cloudinary.exceptions.Error as err:
+      logger.error(
+        {"msg": "[x] An error occured while attaching files to the lesson.",
+         "erorr": err
+        })
       raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         detail=f"Error attaching files."
@@ -239,26 +250,90 @@ async def upload_schedule_files(
   
   if not (await collection.update_one(
     filter=lesson,
-    update={"$set": {"attachments": response_content}})
+    update={"$push": {"attachments": {"$each": attachments}}})
   ):
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
       detail="Can't attachment your files to the lesson."
     ) 
-  return lesson
+  
+  return attachments
 
-@router.put("/{group}/{id}/update",
+@router.post("/{group}/{lesson_id}/detach/{file_id}",
+  status_code=status.HTTP_200_OK)
+async def detach_schedule_file(
+  group: Annotated[str, Path()],
+  lesson_id: Annotated[str, Path()],
+  file_id: Annotated[str, Path()],
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Detaches the file from the lesson.
+  """
+  teacher = TeacherBase.model_validate(user)
+
+  schedule_db = mongo.get_database("schedule")
+  if group not in await schedule_db.list_collection_names():
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Group not found."
+    )
+  
+  collection = schedule_db.get_collection(group)
+  if not (schedule_lesson := await collection.find_one(
+    filter={
+      "teacher_edbo": teacher.edbo_id,
+      "lesson_id": lesson_id,
+      "attachments": {"$elemMatch": {"file_id": file_id}},
+    })):
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Not found."
+      ) 
+  for attachment in schedule_lesson["attachments"]:
+    if (file_id == attachment["file_id"]):
+      file_type = attachment["file_type"]
+  try:
+    detach_result = cloudinary.uploader.destroy(
+      public_id=file_id,
+      resource_type=file_type
+    )
+  except cloudinary.exceptions.Error as err:
+    logger.error(
+    {"msg": "[x] An error occured while detaching files from the lesson.",
+     "erorr": err
+    })
+    raise HTTPException(
+      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+      detail="An error occured while detaching the file."
+    )
+
+  if detach_result != "ok":
+    HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="File not found in the cloud."
+    )  
+
+  await collection.update_one(
+    filter=schedule_lesson,
+    update={"$pull": {"attachments": {"file_id": file_id}}}
+  )
+
+  return {"message": "File detached successfully."}
+
+@router.put("/{group}/{lesson_id}/update",
   status_code=status.HTTP_200_OK,
   response_model=ScheduleBase)
 async def update_schedule(
   group: Annotated[str, Path()],
-  id: Annotated[str, Path()],
+  lesson_id: Annotated[str, Path()],
   schedule_update: Annotated[ScheduleBase, Body()],
   user: Annotated[MongoClient, Security(get_current_user, scopes=["teacher"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
   """
-  Updates the lesson specified by `id`.
+  Updates the lesson specified by `lesson_id`.
   """
   teacher = TeacherBase.model_validate(user)
 
@@ -277,7 +352,7 @@ async def update_schedule(
 
   collection = schedule_db.get_collection(group)
   lesson = await collection.find_one_and_update(
-    filter={"lesson_id": id},
+    filter={"lesson_id": lesson_id},
     update={"$set": schedule_update.model_dump()}
   )
   if not lesson:
@@ -288,16 +363,16 @@ async def update_schedule(
   
   return schedule_update
 
-@router.delete("/{group}/{id}/delete",
+@router.delete("/{group}/{lesson_id}/delete",
   status_code=status.HTTP_200_OK,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def delete_schedule(
   group: Annotated[str, Path()],
-  id: Annotated[str, Path()],
+  lesson_id: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
   """
-  Deletes the lesson specified by `id`.
+  Deletes the lesson specified by `lesson_id`.
   """
   
   schedule_db = mongo.get_database("schedule")
@@ -309,13 +384,10 @@ async def delete_schedule(
     )
 
   collection = schedule_db.get_collection(group)
-  if not await collection.find_one_and_delete({"lesson_id": id}):
+  if not await collection.find_one_and_delete({"lesson_id": lesson_id}):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Lesson not found."
     )
   
-  raise HTTPException(
-    status_code=status.HTTP_200_OK,
-    detail="The lesson has been deleted."
-  )
+  return {"message": "The lesson has been deleted."}

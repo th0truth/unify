@@ -1,4 +1,4 @@
-from typing import Optional, Union, List
+from typing import Optional, List
 from pydantic import BaseModel
 
 from .user import UserInitial
@@ -16,13 +16,9 @@ class ScheduleCreate(ScheduleBase):
   group: str
   date: str
 
-class ScheduleFile(MetaFile):
-  group: str
-  lesson_id: str
-
 class SchedulePrivate(ScheduleCreate):
   teacher: Optional[UserInitial] = None
   teacher_edbo: Optional[int] = None
   grade: Optional[int] = None
+  attachments: Optional[List[MetaFile]] = None
   lesson_id: str
-  attachments: Optional[List[ScheduleFile]] = None

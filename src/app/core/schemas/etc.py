@@ -13,6 +13,8 @@ class UpdateEmail(BaseModel):
 
 class MetaFile(BaseModel):
   metadata: Dict[str, Any]
+  file_type: str
+  file_id: str
   url: str
 
 class PasswordRecovery(BaseModel):
