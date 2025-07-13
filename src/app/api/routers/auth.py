@@ -102,16 +102,17 @@ async def logout(
   """
   # Decode a user's JWT 
   payload = OAuthJWTBearer.decode(token.access_token)
+  jti, exp = payload.get("jti"), payload.get("exp")
 
   # Check if jti is revoked
-  if await OAuthJWTBearer.is_jti_in_blacklist(redis, jti=payload.get("jti")):
+  if await OAuthJWTBearer.is_jti_in_blacklist(redis, jti=jti):
     raise HTTPException(
       status_code=status.HTTP_401_UNAUTHORIZED,
       detail="Token has been revoked."
     )
 
   # Add the access token to the blacklist
-  if not await OAuthJWTBearer.add_jti_to_blacklist(redis, jti=token.access_token, exp=payload.get("exp")):
+  if not await OAuthJWTBearer.add_jti_to_blacklist(redis, jti=jti, exp=exp):
     raise HTTPException(
       status_code=status.HTTP_409_CONFLICT,
       detail="An error occured while adding JWT to blacklist."
