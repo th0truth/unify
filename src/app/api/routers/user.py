@@ -1,5 +1,6 @@
 from typing import Annotated
 from fastapi import (
+  BackgroundTasks,
   HTTPException,
   APIRouter,
   status,
@@ -11,7 +12,7 @@ from core.schemas.etc import (
   UpdatePassword,
   PasswordRecovery
 )
-from core.security.utils import Hash
+from core.security.utils import Hash, send_email
 from core.db import MongoClient
 from redis.asyncio import Redis
 from api.dependencies import (
@@ -42,7 +43,8 @@ async def add_user_email(
   user_update: Annotated[UpdateEmail, Body()],
   user: Annotated[dict, Depends(get_current_user)],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
-  redis: Annotated[Redis, Depends(get_redis_client)]
+  redis: Annotated[Redis, Depends(get_redis_client)],
+  background_tasks: BackgroundTasks
 ):
   """
   Adds an email to the user account.
@@ -62,6 +64,16 @@ async def add_user_email(
 
   # Update the user data
   await crud.update_user(users_db, edbo_id=edbo_id, update_doc={"email": user_update.email})
+
+  background_tasks.add_task(
+    send_email,
+    to=user_update.email,
+    subject=f"Hi, {user.get('first_name')}.",
+    html_content="Email has been updated.",
+    text_content="Description.",
+    reply_to_name="Support",
+    reply_to_email="vocnuft@gmail.com"
+  )
 
   # Delete the user data from the Redis database
   await redis.delete(f"auth:user:{edbo_id}")

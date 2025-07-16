@@ -49,6 +49,11 @@ class Settings(BaseSettings):
   CLOUDINARY_CLOUD_NAME: str
   CLOUDINARY_API_KEY: int
   CLOUDINARY_API_SECRET: str
+  
+  # MailerSend secrets
+  MAILERSEND_API_KEY: str
+  MAILERSEND_SMTP_USERNAME: str
+  MAILERSEND_SMTP_NAME: str
 
   # JWT settings
   JWT_ALGORITHM: str = "RS256"
