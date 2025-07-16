@@ -52,7 +52,7 @@ class Settings(BaseSettings):
   
   # MailerSend secrets
   MAILERSEND_API_KEY: str
-  MAILERSEND_SMTP_USERNAME: str
+  MAILERSEND_SMTP_EMAIL: str
   MAILERSEND_SMTP_NAME: str
 
   # JWT settings

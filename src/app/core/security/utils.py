@@ -46,7 +46,7 @@ def send_email(to: str, subject: str, html_content: str, text_content: str, repl
   # Set sender details
   mail_from = {
     "name": settings.MAILERSEND_SMTP_NAME,
-    "email": settings.MAILERSEND_SMTP_USERNAME
+    "email": settings.MAILERSEND_SMTP_EMAIL
   }
   
   # Set recipient details
@@ -61,7 +61,7 @@ def send_email(to: str, subject: str, html_content: str, text_content: str, repl
   reply_to = [
     {
       "name": reply_to_name,
-      "email": reply_to_email,
+      "email": settings.MAILERSEND_SMTP_EMAIL,
     }
   ]
 
