@@ -1,5 +1,7 @@
 from typing import Dict, Any
 from pathlib import Path
+import secrets
+import string
 import math
 
 from passlib.context import CryptContext
@@ -32,14 +34,25 @@ def convert_size(size_bytes: bytes):
   s = round(size_bytes / p, 2)
   return "%s %s" % (s, size_name[i])
 
-def render_email_template(*, template_name: str, context: Dict[str, Any]) -> str:
+def render_template(*, template_name: str, context: Dict[str, Any]) -> str:
   template_path = (
-    Path(__file__).parent / "templates" / "email" / template_name
+    Path(__file__).parent.parent / "templates" / template_name
   ).read_text()
   html_content = Template(template_path).render(context)
   return html_content
 
-def send_email(to: str, subject: str, html_content: str, text_content: str, reply_to_name: str, reply_to_email: str) -> str:
+def generate_verification_code(length: int = 6):
+  # Define character pool
+  characters = string.ascii_uppercase + string.digits
+
+  # Remove ambiguous characters
+  ambiguous_chars = "0O1I"
+  clean_chars = "".join(c for c in characters if c not in ambiguous_chars)
+
+  # Generate cryptographically secure code
+  return "".join(secrets.choice(clean_chars) for _ in range(length))
+
+def send_email(to: str, subject: str, html_content: str, text_content: str, reply_to_name: str, **kwargs) -> str:
   # Define an empty dict to populate with mail values
   mail_body = {}
 

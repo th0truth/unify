@@ -12,7 +12,7 @@ from core.schemas.etc import (
   UpdatePassword,
   PasswordRecovery
 )
-from core.security.utils import Hash, send_email
+from core.security.utils import Hash, send_email, render_template, generate_verification_code
 from core.db import MongoClient
 from redis.asyncio import Redis
 from api.dependencies import (
@@ -63,16 +63,30 @@ async def add_user_email(
   edbo_id = user.get("edbo_id")
 
   # Update the user data
-  await crud.update_user(users_db, edbo_id=edbo_id, update_doc={"email": user_update.email})
+  await crud.update_user(users_db, edbo_id=edbo_id, update_doc={"email": {"addess": user_update.email, "is_verified": False}})
 
+  # Generate verification code
+  verification_code = generate_verification_code()
+
+  # Render HTML template
+  html_code = render_template(
+    template_name="email/verification.html",
+    context={
+      "company": "Unified",
+      "name": user.get("first_name"),
+      "account_name": user_update.email,
+      "verification_code": verification_code
+    })
+
+
+  # Send the email
   background_tasks.add_task(
     send_email,
     to=user_update.email,
-    subject=f"Hi, {user.get('first_name')}.",
-    html_content="Email has been updated.",
+    subject=f"Hi.",
+    html_content=html_code,
     text_content="Description.",
     reply_to_name="Support",
-    reply_to_email="vocnuft@gmail.com"
   )
 
   # Delete the user data from the Redis database
