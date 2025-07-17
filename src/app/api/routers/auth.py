@@ -36,9 +36,11 @@ async def login(
   """
   Log in using user credentials.
   """
-  # Authenticate user credentials from the MongoDB database
-  users_db = mongo.get_database("users")
-  user = await crud.authenticate_user(users_db, username=form_data.username, plain_pwd=form_data.password, exclude=["_id", "password"])
+
+  if not (user := await redis.get(f"cache:user:{form_data.username}:profile")):
+    # Authenticate user credentials from the MongoDB database
+    users_db = mongo.get_database("users")
+    user = await crud.authenticate_user(users_db, username=form_data.username, plain_pwd=form_data.password, exclude=["_id", "password"])
   
   # Get data from the payload   
   edbo_id, role, scope = user.get("edbo_id"), user.get("role"), user.get("scope") 
