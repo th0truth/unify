@@ -46,8 +46,8 @@ async def login(
   # Encode user payload for get an JWT
   token = OAuthJWTBearer.encode(payload={"sub": str(edbo_id), "role": role, "scope": scope})
   
-  # Store user credentials in Redis database
-  await redis.setex(f"auth:user:{edbo_id}", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
+  # Store user profile in Redis cache 
+  await redis.setex(f"cache:user:{edbo_id}:profile", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
 
   return TokenPayload(access_token=token["jwt"], role=role)
 

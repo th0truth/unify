@@ -64,8 +64,8 @@ class OAuthJWTBearer:
       logger.warning(f"Token with jti={jti} is already expired. Skipping blacklist.")
       return False
       
-    # Store blacklist entry
-    await redis.setex(f"auth:blacklist:jti:{jti}", ttl, "Revoked")
+    # Store jti in the blacklist entry in Redis
+    await redis.setex(f"session:blacklist:jti:{jti}", ttl, "Revoked")
     return True
   
   @staticmethod
@@ -73,4 +73,4 @@ class OAuthJWTBearer:
     """
     Checks if the `jti` is in blacklist.
     """
-    return await redis.exists(f"auth:blacklist:jti:{jti}")
+    return await redis.exists(f"session:blacklist:jti:{jti}")

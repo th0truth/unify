@@ -90,8 +90,8 @@ async def update_user(
   # Update the user data
   await crud.update_user(users_db, edbo_id=edbo_id, update_doc=update_user)
   
-  # Delete the user data from the Redis database
-  await redis.delete(f"auth:user:{edbo_id}")
+  # Delete user profile from Redis cache
+  await redis.delete(f"cache:user:{edbo_id}:profile")
 
   return {"message": "The user account has been updated."}
 
@@ -111,7 +111,7 @@ async def delete_user(
   # Delete the user account
   await crud.delete_user(users_db, edbo_id=edbo_id)
 
-  # Delete the user data from the Redis database
-  await redis.delete(f"auth:user:{edbo_id}")
+  # Delete user profile from Redis cache
+  await redis.delete(f"cache:user:{edbo_id}:profile")
 
   return {"message": "The user account has been deleted."}

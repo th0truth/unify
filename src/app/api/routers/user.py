@@ -90,7 +90,7 @@ async def add_user_email(
   )
 
   # Delete the user data from the Redis database
-  await redis.delete(f"auth:user:{edbo_id}")
+  await redis.delete(f"cache:user:{edbo_id}:profile")
 
   return {"message": "Email added to the user account."}
 

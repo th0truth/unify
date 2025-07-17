@@ -56,7 +56,7 @@ async def get_current_user(
       detail="Token has been revoked."
     )
   
-  if not (user_cache := await redis.get(f"auth:user:{username}")):
+  if not (user_cache := await redis.get(f"cache:user:{username}:profile")):
     # Authenticate user data from the MongoDB database
     users_db = mongo.get_database("users")
     # Validate user credentials
@@ -66,8 +66,8 @@ async def get_current_user(
         detail="Couldn't validate user credentials.",
         headers={"WWW-Authenticate": "Bearer"}
       )
-    # Add user data to the Redis database
-    await redis.setex(f"auth:user:{username}", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
+    # Store user profile in Redis cache
+    await redis.setex(f"cache:user:{username}:profile", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
   else:
     user = json.loads(user_cache)
 
