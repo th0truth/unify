@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import secrets
 
 private_key = rsa.generate_private_key(
@@ -25,6 +25,8 @@ class Settings(BaseSettings):
   VERSION: str = "0.0.1"
   API_V1_STR: str = "/api/v1"
 
+  COMPANY_NAME: str = ""
+
   # MongoDB settings    
   MONGO_HOSTNAME: str
   MONGO_USERNAME: str
@@ -43,7 +45,8 @@ class Settings(BaseSettings):
   REDIS_PASSWORD: str
   REDIS_DB: int = 0  
   
-  CACHE_EXPIRE_MINUTES: int | float
+  CACHE_EXPIRE_MINUTES: int
+  VERIFICATION_CODE_EXPIRE: int
   
   # Cloudinary secrets
   CLOUDINARY_CLOUD_NAME: str
@@ -57,7 +60,7 @@ class Settings(BaseSettings):
 
   # JWT settings
   JWT_ALGORITHM: str = "RS256"
-  JWT_EXPIRE_MINUTES: int | float
+  JWT_EXPIRE_MINUTES: int
 
   scopes: Dict[str, Any] = {
     "student": "",

@@ -1,4 +1,5 @@
 from typing import Annotated
+from datetime import timedelta
 from fastapi import (
   BackgroundTasks,
   HTTPException,
@@ -7,11 +8,8 @@ from fastapi import (
   Depends,
   Body
 )
-from core.schemas.etc import (
-  UpdateEmail,
-  UpdatePassword,
-  PasswordRecovery
-)
+from core.config import settings
+from core.schemas.etc import UpdateEmail, UpdatePassword, PasswordRecovery
 from core.security.utils import Hash, send_email, render_template, generate_verification_code
 from core.db import MongoClient
 from redis.asyncio import Redis
@@ -63,33 +61,35 @@ async def add_user_email(
   edbo_id = user.get("edbo_id")
 
   # Update the user data
-  await crud.update_user(users_db, edbo_id=edbo_id, update_doc={"email": {"addess": user_update.email, "is_verified": False}})
+  await crud.update_user(users_db, edbo_id=edbo_id, update_doc={"email": {"address": user_update.email, "is_verified": False}})
 
   # Generate verification code
   verification_code = generate_verification_code()
 
+  hash_key = f"session:code:{verification_code}"
+  await redis.hset(hash_key, key=edbo_id, value=verification_code)
+  await redis.expire(hash_key, timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE).seconds)
+
   # Render HTML template
   html_code = render_template(
-    template_name="email/verification.html",
+    template_name="email/verification_code.html",
     context={
-      "company": "Unified",
+      "company": settings.COMPANY_NAME,
       "name": user.get("first_name"),
       "account_name": user_update.email,
       "verification_code": verification_code
     })
 
-
   # Send the email
   background_tasks.add_task(
     send_email,
     to=user_update.email,
-    subject=f"Hi.",
+    subject=f"Hello.",
     html_content=html_code,
-    text_content="Description.",
     reply_to_name="Support",
   )
 
-  # Delete the user data from the Redis database
+  # Delete user profile from Redis cache 
   await redis.delete(f"cache:user:{edbo_id}:profile")
 
   return {"message": "Email added to the user account."}
@@ -121,7 +121,8 @@ async def update_password_me(
   status_code=status.HTTP_200_OK)
 async def password_recovery(
   update_body: Annotated[PasswordRecovery, Body()],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
+  background_tasks: BackgroundTasks
 ):
   """
   Password recovery for the current user.
@@ -136,7 +137,30 @@ async def password_recovery(
       detail="Can't find your account."
     )
   
+  # Generate verification code
+  verification_code = generate_verification_code()
+
   # Update the user data
   await crud.update_user(users_db, edbo_id=user.get("edbo_id"), update_doc={"password": Hash.hash(plain=update_body.new_password)})
+
+  # Render HTML template
+  html_code = render_template(
+    template_name="email/reset_password.html",
+    context={
+      "company": settings.COMPANY_NAME,
+      "name": user.get("first_name"),
+      "account_name": update_body.email,
+      "verification_code": verification_code
+    })
+
+  # Send the email
+  background_tasks.add_task(
+    send_email,
+    to=update_body.email,
+    subject=f"Hi.",
+    html_content=html_code,
+    text_content="Description.",
+    reply_to_name="Support",
+  )
 
   return {"message": "The user's password has been recovered."}

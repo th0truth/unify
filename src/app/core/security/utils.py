@@ -52,7 +52,7 @@ def generate_verification_code(length: int = 6):
   # Generate cryptographically secure code
   return "".join(secrets.choice(clean_chars) for _ in range(length))
 
-def send_email(to: str, subject: str, html_content: str, text_content: str, reply_to_name: str, **kwargs) -> str:
+def send_email(to: str, subject: str, html_content: str, reply_to_name: str, **kwargs) -> str:
   # Define an empty dict to populate with mail values
   mail_body = {}
 
@@ -83,8 +83,9 @@ def send_email(to: str, subject: str, html_content: str, text_content: str, repl
   mailer.set_mail_to(recipients, mail_body)
   mailer.set_subject(subject, mail_body)
   mailer.set_html_content(html_content, mail_body)
-  mailer.set_plaintext_content(text_content, mail_body)
   mailer.set_reply_to(reply_to, mail_body)
-
+  if (text_content := kwargs.get("text_content")):
+    mailer.set_plaintext_content(text_content, mail_body)
+  
   # Send the email 
   return mailer.send(mail_body)
