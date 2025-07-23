@@ -18,12 +18,13 @@
 
 # **Installation**
 
-The current recommend way to install unifyapi is from source.
+The current recommend way to install unify is from source.
 
 ## From source
+
 ```bash
-git clone https://github.com/th0truth/unifyapi.git
-cd unifyapi
+git clone https://github.com/th0truth/unify.git
+cd unify
 ```
 
 ## Requirements
@@ -33,25 +34,35 @@ cd unifyapi
 
 # Configure
 
-You must update configs in the `.env` files to customize your configuration. 
+You must rename .env.example to .env and fill in your required secrets and configuration values.
 
-# **How to use**
+## **Usage**
+
+If you have installed `bash`.
 
 ```bash
 bash scripts/build.sh
 
-bash scripts/run.sh
+bash scripts/run.sh 
 ```
 
-or
+Alternative way:
 
 ```bash
 python -m venv venv
-source Scripts/venv/activate
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 pip install poetry
 
 poetry install --no-root
 
-docker compose up
+docker compose up # -d
 ```
+
+## **Docs**
+    
+    # Swagger UI:
+    - http://localhost:10000/docs
+
+    # ReDoc UI:
+    - http://localhost:10000/redoc

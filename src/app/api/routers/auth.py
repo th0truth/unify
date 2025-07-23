@@ -7,6 +7,7 @@ from fastapi import (
   status,
   Depends,
   Header,
+  Path
 )
 import json
 
@@ -121,3 +122,13 @@ async def logout(
     )
   
   return {"message": "Successfully logged out."}
+
+@router.get("/{code}/verify",
+  status_code=status.HTTP_200_OK)
+async def verify_code(
+  code: Annotated[int, Path()],
+  user: Annotated[dict, Depends(get_current_user)],
+  redis: Annotated[Redis, Depends(get_redis_client)]
+):
+  a = await redis.hget(f"session:code:{code}", user.get("edbo_id"))
+  print(a)
