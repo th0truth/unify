@@ -1,12 +1,14 @@
 services:
-  backend:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
     ports:
       - "10000:10000"
-    develop:
-      watch:
-        - action: sync
-          path: .
-          target: /app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:10000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
