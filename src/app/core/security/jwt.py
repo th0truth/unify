@@ -49,8 +49,9 @@ class OAuthJWTBearer:
     """
     Refreshes the claims of a JWT, updating expiry time.
     """
+    jti = str(uuid.uuid4())
     payload.update(
-      {"exp": datetime.now(tz=timezone.utc) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)})
+      {"jti": jti, "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)})
     return jwt.encode(payload=payload, key=settings.PRIVATE_KEY_PEM, algorithm=settings.JWT_ALGORITHM)
   
   @staticmethod

@@ -38,9 +38,8 @@ async def get_current_user(
   redis: Annotated[Redis, Depends(get_redis_client)],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ) -> dict:
-  # Decode a user's JWT
-  payload = OAuthJWTBearer.decode(token=token)
-  if not payload:
+  # Decode the user's JWT
+  if not (payload := OAuthJWTBearer.decode(token=token)):
     raise HTTPException(
       status_code=status.HTTP_401_UNAUTHORIZED,
       detail="Invalid token.",

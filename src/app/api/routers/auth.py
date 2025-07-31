@@ -46,10 +46,10 @@ async def login(
     user = json.loads(user_cache)
   
   # Get data from the payload   
-  edbo_id, role, scope = user.get("edbo_id"), user.get("role"), user.get("scope") 
+  edbo_id, role, scopes = user.get("edbo_id"), user.get("role"), user.get("scopes") 
 
   # Encode user payload for get an JWT
-  token = OAuthJWTBearer.encode(payload={"sub": str(edbo_id), "role": role, "scope": scope})
+  token = OAuthJWTBearer.encode(payload={"sub": str(edbo_id), "role": role, "scopes": scopes})
   
   # Store user profile in Redis cache 
   await redis.setex(f"cache:user:{edbo_id}:profile", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
@@ -125,12 +125,12 @@ async def logout(
   
   return {"message": "Successfully logged out."}
 
-@router.get("/{code}/verify",
-  status_code=status.HTTP_200_OK)
-async def verify_code(
-  code: Annotated[int, Path()],
-  user: Annotated[dict, Depends(get_current_user)],
-  redis: Annotated[Redis, Depends(get_redis_client)]
-):
-  a = await redis.hget(f"session:code:{code}", user.get("edbo_id"))
-  print(a)
+# @router.get("/{code}/verify",
+#   status_code=status.HTTP_200_OK)
+# async def verify_code(
+#   code: Annotated[int, Path()],
+#   user: Annotated[dict, Depends(get_current_user)],
+#   redis: Annotated[Redis, Depends(get_redis_client)]
+# ):
+#   a = await redis.hget(f"session:code:{code}", user.get("edbo_id"))
+#   print(a)
