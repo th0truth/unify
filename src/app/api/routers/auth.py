@@ -37,7 +37,6 @@ async def login(
   """
   Log in using user credentials.
   """
-
   if not (user_cache := await redis.get(f"cache:user:{form_data.username}:profile")):
     # Authenticate user credentials from the MongoDB database
     users_db = mongo.get_database("users")

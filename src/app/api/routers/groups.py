@@ -123,7 +123,6 @@ async def create_group(
   """
   Creates the student group.
   """
-
   groups_db = mongo.get_database("groups")
   collections = await groups_db.list_collection_names()
   if create_group.degree not in collections:
@@ -155,7 +154,6 @@ async def delete_group(
   """
   Deletes the student group.
   """
-  
   groups_db = mongo.get_database("groups") 
   for degree in await groups_db.list_collection_names():
     collection = groups_db.get_collection(degree)

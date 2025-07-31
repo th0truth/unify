@@ -7,9 +7,7 @@ from core.security.utils import Hash
 from core.schemas.user import UserBase
 
 async def get_user_by_username(db: AsyncDatabase, *, username: int | str, exclude: Optional[list] = None) -> dict:
-  """
-  Find user by `username`. 
-  """
+  """Find user by `username`."""
   for name in await db.list_collection_names():
     collection = db.get_collection(name)
     user = await collection.find_one(
@@ -59,10 +57,10 @@ async def delete_user(db: AsyncDatabase, *, edbo_id: int):
   """Delete user from the MongoDB collection by `edbo_id`."""
   user = await get_user_by_username(db, username=edbo_id)
   if not user:
-      raise HTTPException(
-          status_code=status.HTTP_404_NOT_FOUND,
-          detail="User not found."
-      )
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="User not found."
+    )
   collection = db.get_collection(user.get("role"))
   await collection.delete_one({"edbo_id": edbo_id})
 

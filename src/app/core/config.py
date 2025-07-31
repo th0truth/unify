@@ -63,9 +63,9 @@ class Settings(BaseSettings):
   JWT_EXPIRE_MINUTES: int
 
   scopes: Dict[str, Any] = {
-    "student": "",
-    "teacher": "",
-    "admin": ""
+    "student": "Authorize as a student with appropriate privileges.",
+    "teacher": "Authorize as a teacher with appropriate privileges.",
+    "admin": "Authorize as a admin with appropriate privileges."
   }
 
   SECRET_KEY: str = secrets.token_hex(32)

@@ -30,9 +30,8 @@ async def get_active_user(
   user: Annotated[dict, Depends(get_current_user)]
 ):
   """
-  Returns user's data.
+  Returns user data.
   """
-
   return user
 
 @router.patch("/email/update",
@@ -47,7 +46,6 @@ async def add_user_email(
   """
   Adds an email to the user account.
   """
-  
   # Get user's email from the MongoDB database
   users_db = mongo.get_database("users")
   if await crud.get_user_by_username(users_db, username=user_update.email):
@@ -105,7 +103,6 @@ async def update_password_me(
   """
   Updates the current user's password.
   """
-
   # Get the user email's from the MongoDB database
   users_db = mongo.get_database("users")
 
@@ -127,7 +124,6 @@ async def password_recovery(
   """
   Password recovery for the current user.
   """
-
   # Get the user's email from the MongoDB database.
   users_db = mongo.get_database("users")
   user = await crud.get_user_by_username(users_db, username=update_body.email)
