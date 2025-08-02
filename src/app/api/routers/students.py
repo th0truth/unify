@@ -104,7 +104,7 @@ async def get_current_student_all_grades(
   grades = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group, date=date)
   return grades
 
-@router.post("{edbo_id}/grades",
+@router.post("/{edbo_id}/grades",
   status_code=status.HTTP_200_OK,
   response_model_exclude_none = True,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
@@ -130,7 +130,7 @@ async def get_student_grades(
   grades = await crud.get_grades(grades_db, edbo_id=edbo_id, group=student.group, subject=grade_body.subject, date=date)
   return grades
 
-@router.get("{edbo_id}/grades/all",
+@router.get("/{edbo_id}/grades/all",
   status_code=status.HTTP_200_OK,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def get_student_all_grades(
