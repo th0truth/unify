@@ -17,6 +17,14 @@ class ScheduleCreate(ScheduleBase):
   group: LocalizedGroup
   date: str
 
+class ScheduleUpdate(BaseModel):
+  subject: str
+  position: Optional[int] = None
+  classroom: Optional[int] = None
+  date: Optional[str] = None
+  topic: Optional[str] = None
+  homework: Optional[str] = None
+
 class SchedulePrivate(ScheduleCreate):
   teacher: Optional[UserInitial] = None
   teacher_edbo: Optional[int] = None
