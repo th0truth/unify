@@ -164,7 +164,7 @@ async def create_schedule(
   schedule_private = SchedulePrivate(
     **schedule.model_dump(),
     teacher_edbo=teacher.edbo_id,
-    lesson_id=str(uuid.uuid4())
+    lesson_id=str(uuid.uuid4().hex)
   )
 
   # Insert the schedule to the MongoDB database
