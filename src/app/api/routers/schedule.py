@@ -21,6 +21,7 @@ from core.security.utils import convert_size
 from core.schemas.schedule import (
   ScheduleBase,
   ScheduleCreate,
+  ScheduleUpdate,
   SchedulePrivate
 )
 from core.schemas.user import UserInitial, UserBase
@@ -323,12 +324,11 @@ async def detach_schedule_file(
   return {"message": "File detached successfully."}
 
 @router.put("/{group}/{lesson_id}/update",
-  status_code=status.HTTP_200_OK,
-  response_model=ScheduleBase)
+  status_code=status.HTTP_200_OK)
 async def update_schedule(
   group: Annotated[str, Path()],
   lesson_id: Annotated[str, Path()],
-  schedule_update: Annotated[ScheduleBase, Body()],
+  schedule_update: Annotated[ScheduleUpdate, Body()],
   user: Annotated[MongoClient, Security(get_current_user, scopes=["teacher"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
@@ -353,15 +353,15 @@ async def update_schedule(
   collection = schedule_db.get_collection(group)
   lesson = await collection.find_one_and_update(
     filter={"lesson_id": lesson_id},
-    update={"$set": schedule_update.model_dump()}
+    update={"$set": schedule_update.model_dump(exclude_unset=True)}
   )
   if not lesson:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
-      detail="Lesson not found."
+      detail="The lesson not found."
     )
   
-  return schedule_update
+  return {"message": "The lesson has been successfully updated."}
 
 @router.delete("/{group}/{lesson_id}/delete",
   status_code=status.HTTP_200_OK,
