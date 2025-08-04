@@ -35,7 +35,7 @@ async def create_student(
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
     collection = groups_db.get_collection(degree)
-    if (group := await collection.find_one({"group": create_student.group})):
+    if (group := await collection.find_one({"group.en": create_student.group})):
       break
 
   if not group:
@@ -69,7 +69,7 @@ async def read_students(
   Returns a list of all existing students from the given group.
   """
   users_db = mongo.get_database("users")
-  return await crud.read_users(users_db, role="students", filter="group", value=group)
+  return await crud.read_users(users_db, role="students", filter="group.en", value=group)
 
 @router.post("/my/grades",
   status_code=status.HTTP_200_OK)
@@ -85,7 +85,7 @@ async def get_current_student_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  grades = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group, subject=grade_body.subject, date=date) 
+  grades = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group.en, subject=grade_body.subject, date=date) 
   return grades
 
 @router.get("/my/grades/all",
@@ -101,7 +101,7 @@ async def get_current_student_all_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  grades = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group, date=date)
+  grades = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group.en, date=date)
   return grades
 
 @router.post("/{edbo_id}/grades",
@@ -127,7 +127,7 @@ async def get_student_grades(
   student = StudentBase.model_validate(user)
   
   grades_db = mongo.get_database("grades")
-  grades = await crud.get_grades(grades_db, edbo_id=edbo_id, group=student.group, subject=grade_body.subject, date=date)
+  grades = await crud.get_grades(grades_db, edbo_id=edbo_id, group=student.group.en, subject=grade_body.subject, date=date)
   return grades
 
 @router.get("/{edbo_id}/grades/all",
@@ -151,7 +151,7 @@ async def get_student_all_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  grades = await crud.get_grades(grades_db, edbo_id=edbo_id, group=student.group, date=date)
+  grades = await crud.get_grades(grades_db, edbo_id=edbo_id, group=student.group.en, date=date)
   return grades
 
 @router.get("/disciplines",
@@ -169,7 +169,7 @@ async def get_student_disciplines(
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
     collection = groups_db.get_collection(degree)
-    if (student_group := await collection.find_one({"group": student.group})):
+    if (student_group := await collection.find_one({"group.en": student.group.en})):
       break
   if not student_group:
     raise HTTPException(

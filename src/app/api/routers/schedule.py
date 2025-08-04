@@ -59,11 +59,11 @@ async def get_current_user_schedule(
   match role:
     case "students":
       student = StudentBase.model_validate(user) 
-      collection = schedule_db.get_collection(student.group)
+      collection = schedule_db.get_collection(student.group.en)
       schedule = await collection.find().to_list()
 
       grades_db = mongo.get_database("grades")
-      grades_doc = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group)
+      grades_doc = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group.en)
       
       users_db = mongo.get_database("users")
       collection = users_db.get_collection("teachers")
@@ -152,7 +152,7 @@ async def create_schedule(
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
     collection = groups_db.get_collection(degree)
-    if (group := await collection.find_one({"group": schedule.group})):
+    if (group := await collection.find_one({"group.en": schedule.group.en})):
       break
   if not group:
     raise HTTPException(
@@ -168,7 +168,7 @@ async def create_schedule(
 
   # Insert the schedule to the MongoDB database
   schedule_db = mongo.get_database("schedule")
-  collection = schedule_db.get_collection(schedule.group)
+  collection = schedule_db.get_collection(schedule.group.en)
   await collection.insert_one(
     schedule_private.model_dump(exclude_none=True)
   )

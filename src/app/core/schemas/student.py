@@ -2,12 +2,13 @@ from datetime import datetime
 from pydantic import Field
 
 from .user import UserBase
+from .group import LocalizedGroup
 
 class StudentBase(UserBase):
   speciality: str
   degree: str
   course: int
-  group: str
+  group: LocalizedGroup
   start_of_study: str
   complete_of_study: str
   class_teacher_edbo: int

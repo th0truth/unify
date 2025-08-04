@@ -2,6 +2,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 
 from .user import UserInitial
+from .group import LocalizedGroup
 from .etc import MetaFile
 
 class ScheduleBase(BaseModel):
@@ -13,7 +14,7 @@ class ScheduleBase(BaseModel):
   homework: str
 
 class ScheduleCreate(ScheduleBase):
-  group: str
+  group: LocalizedGroup
   date: str
 
 class SchedulePrivate(ScheduleCreate):

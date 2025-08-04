@@ -66,7 +66,7 @@ async def student_assessment(
     )
   
   grades_db = mongo.get_database("grades")
-  collection = grades_db.get_collection(student.group)
+  collection = grades_db.get_collection(student.group.en)
 
   if not (await collection.find_one_and_update(
     filter={"edbo_id": edbo_id},
@@ -75,7 +75,7 @@ async def student_assessment(
     await collection.insert_one(
       {"edbo_id": edbo_id,
        "disciplines": {
-         grade_body.grade: {
+         grade_body.subject: {
            grade_body.date: grade_body.grade
          }
        }}
