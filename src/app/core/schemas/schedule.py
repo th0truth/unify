@@ -18,7 +18,7 @@ class ScheduleCreate(ScheduleBase):
   date: str
 
 class ScheduleUpdate(BaseModel):
-  subject: str
+  subject: Optional[str] = None
   position: Optional[int] = None
   classroom: Optional[int] = None
   date: Optional[str] = None

@@ -321,7 +321,7 @@ async def detach_schedule_file(
     update={"$pull": {"attachments": {"file_id": file_id}}}
   )
 
-  return {"message": "File detached successfully."}
+  return {"message": "The file has been successfully detached."}
 
 @router.put("/{group}/{lesson_id}/update",
   status_code=status.HTTP_200_OK)
@@ -338,7 +338,7 @@ async def update_schedule(
   teacher = TeacherBase.model_validate(user)
 
   schedule_db = mongo.get_database("schedule")
-  if schedule_update.subject not in teacher.disciplines:
+  if schedule_update.subject and schedule_update.subject not in teacher.disciplines:
     raise HTTPException(
       status_code=status.HTTP_403_FORBIDDEN,
       detail="You don't have access to this discipline."
