@@ -9,12 +9,20 @@ from fastapi import (
   Path,
   Body
 )
+from datetime import timedelta
+import json
+
+from core.config import settings
+from core.logger import logger
+
 from core.schemas.student import StudentBase, StudentCreate
 from core.schemas.grade import GradeBase
 from core.schemas.teacher import TeacherBase
 from core.db import MongoClient
+from redis.asyncio import Redis
 from api.dependencies import (
   get_mongo_client,
+  get_redis_client,
   get_current_user
 )
 import crud
@@ -158,30 +166,53 @@ async def get_student_all_grades(
   status_code=status.HTTP_200_OK)
 async def get_student_disciplines(
   user: Annotated[dict, Security(get_current_user, scopes=["student"])],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
+  redis: Annotated[Redis, Depends(get_redis_client)]
 ):
   """
   Returns the current student's disciplines.
   """
   student = StudentBase.model_validate(user)
-  
-  disciplines = {}
-  groups_db = mongo.get_database("groups")
-  for degree in await groups_db.list_collection_names():
-    collection = groups_db.get_collection(degree)
-    if (student_group := await collection.find_one({"group.en": student.group.en})):
-      break
-  if not student_group:
+
+  redis_key = f"cache:group:{student.group.en}:disciplines"
+
+  try:
+    # Check if group disciplines exist in Redis cache
+    if (disciplines_cache := await redis.get(redis_key)):
+      try:
+        disciplines = json.loads(disciplines_cache)
+        return disciplines
+      except json.JSONDecodeError:
+        pass
+    
+    disciplines = {}
+    groups_db = mongo.get_database("groups")
+    for degree in await groups_db.list_collection_names():
+      collection = groups_db.get_collection(degree)
+      if (student_group := await collection.find_one({"group.en": student.group.en})):
+        break
+
+    if not student_group:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Group not found."
+      )
+    
+    users_db = mongo.get_database("users")
+    collection = users_db.get_collection("teachers")
+    for subject, edbo_id in student_group.get("disciplines").items():
+      teacher = TeacherBase.model_validate(await collection.find_one({"edbo_id": edbo_id}))
+      disciplines.update({
+        subject: teacher.model_dump()
+      })
+
+    # Store group disciplines in Redis cache
+    await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, value=json.dumps(disciplines))
+
+    return disciplines
+  except Exception as err:
+    logger.error(err)
     raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Group not found."
+      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+      detail="Internal server error."
     )
-      
-  users_db = mongo.get_database("users")
-  collection = users_db.get_collection("teachers")
-  for subject, edbo_id in student_group.get("disciplines").items():
-    teacher = TeacherBase.model_validate(await collection.find_one({"edbo_id": edbo_id}))
-    disciplines.update({
-      subject: teacher
-    })
-  return disciplines
