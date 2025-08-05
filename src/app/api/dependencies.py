@@ -9,6 +9,7 @@ from datetime import timedelta
 import json
 
 from core.config import settings
+from core.logger import logger
 
 from core.security.jwt import OAuthJWTBearer
 from core.db import MongoClient, RedisClient
@@ -27,6 +28,7 @@ async def get_redis_client() -> AsyncGenerator[RedisClient, None]:
     await RedisClient.connect()
   yield RedisClient._client
 
+# OAuth2 scheme for authentication
 oauth2_scheme = OAuth2PasswordBearer(
   tokenUrl=f"{settings.API_V1_STR}/auth/login",
   scopes=settings.scopes
@@ -54,30 +56,46 @@ async def get_current_user(
       status_code=status.HTTP_401_UNAUTHORIZED,
       detail="Token has been revoked."
     )
-  
-  if not (user_cache := await redis.get(f"cache:user:{username}:profile")):
-    # Authenticate user data from the MongoDB database
+
+  redis_key = f"cache:user:{username}:profile"
+
+  try:
+    # Check if user data exists in Redis cache
+    if (user_cache := await redis.get(redis_key)):
+      try:
+        user = json.loads(user_cache)
+        return user
+      except json.JSONDecodeError:
+        pass
+    
+    # Check if user exists in MongoDB
     users_db = mongo.get_database("users")
-    # Validate user credentials
     if not (user := await crud.get_user_by_username(users_db, username=username, exclude=["_id", "password"])):
       raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Couldn't validate user credentials.",
         headers={"WWW-Authenticate": "Bearer"}
       )
+
     # Store user profile in Redis cache
     await redis.setex(f"cache:user:{username}:profile", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
-  else:
-    user = json.loads(user_cache)
 
-  token_data = TokenData(edbo_id=user.get("edbo_id"), scopes=user.get("scopes"))
-  
-  # Check a user's privileges 
-  if security_scopes.scopes:
-    for scope in token_data.scopes:
-      if scope not in security_scopes.scopes:
-        raise HTTPException(
-          status_code=status.HTTP_404_NOT_FOUND,
-          detail="Not enough permissions."
-        )
-  return user
+    # Validate TokenData model
+    token_data = TokenData(edbo_id=user.get("edbo_id"), scopes=user.get("scopes"))
+    
+    # Check a user's privileges 
+    if security_scopes.scopes:
+      for scope in token_data.scopes:
+        if scope not in security_scopes.scopes:
+          raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not enough permissions."
+          )
+        
+    return user
+  except Exception as err:
+    logger.error(err)
+    raise HTTPException(
+      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+      detail="Internal server error."
+    ) 
