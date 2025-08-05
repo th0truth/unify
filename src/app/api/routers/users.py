@@ -1,4 +1,4 @@
-from typing import Annotated, Optional, List
+from typing import Annotated, List
 from fastapi import (
   APIRouter,
   HTTPException,
@@ -7,11 +7,16 @@ from fastapi import (
   Depends,
   Path,
   Query,
-  Body,
+  Body
 )
+import json
+from datetime import timedelta
+
+from core.logger import logger
+from core.config import settings
 from core.schemas.user import UserBase, UserUpdate
-from redis.asyncio import Redis
 from core.db import MongoClient
+from redis.asyncio import Redis
 from api.dependencies import (
   get_mongo_client,
   get_redis_client,
@@ -27,19 +32,41 @@ router = APIRouter(tags=["Users"])
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def read_user(
   edbo_id: Annotated[int, Path()],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
+  redis: Annotated[Redis, Depends(get_redis_client)]
 ):
   """
   Returns user data by `edbo_id`.
   """
-  users_db = mongo.get_database("users")
-  user = await crud.read_user(users_db, edbo_id=edbo_id)
-  if not user:
+  redis_key = f"cache:user:{edbo_id}:profile"
+  try:
+    # Check if user data exists in Redis cache
+    if (user_cache := await redis.get(redis_key)):
+      try:
+        # Parse user data to the JSON format
+        user = json.loads(user_cache)
+        return user
+      except json.JSONDecodeError:
+        pass
+
+    
+    # Check if user exists in MongoDB
+    users_db = mongo.get_database("users")
+    if not (user := await crud.read_user(users_db, edbo_id=edbo_id)):
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="User not found."
+      )
+    
+    # Store user data in Redis cache 
+    await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
+    return user
+  except Exception as err:
+    logger.error(err)
     raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="User not found."
+      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+      detail="Internal server error."
     )
-  return user
 
 @router.get("/{role}/all",
   status_code=status.HTTP_200_OK,
