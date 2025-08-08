@@ -12,11 +12,14 @@ from fastapi import (
   Path,
   Body
 )
-import uuid
+from datetime import timedelta
 import cloudinary
+import json
+import uuid
 
 from core.logger import logger
 from core.config import settings
+
 from core.security.utils import convert_size
 from core.schemas.schedule import (
   ScheduleBase,
@@ -29,8 +32,10 @@ from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase
 from core.schemas.etc import MetaFile
 from core.db import MongoClient
+from redis.asyncio import Redis
 from api.dependencies import (
   get_mongo_client,
+  get_redis_client,
   get_current_user
 )
 import crud
@@ -50,7 +55,8 @@ cloudinary.config(
   response_model_exclude_none=True)
 async def get_current_user_schedule(
   user: Annotated[dict, Security(get_current_user, scopes=["student", "teacher"])],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
+  redis: Annotated[Redis, Depends(get_redis_client)]
 ):
   """
   Returns the schedule for the current user. 
@@ -60,20 +66,52 @@ async def get_current_user_schedule(
   match role:
     case "students":
       student = StudentBase.model_validate(user) 
-      collection = schedule_db.get_collection(student.group.en)
-      schedule = await collection.find().to_list()
+ 
+      redis_key = f"cache:group:{student.group.en}:schedule"
 
-      grades_db = mongo.get_database("grades")
-      grades_doc = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group.en)
+      try:
+        # Check if student schedule exits in Redis cache
+        if (schedule_cache := await redis.get(redis_key)):
+          try:
+            schedule = json.loads(schedule_cache)
+            return schedule
+          except json.JSONDecodeError:
+            pass
+
+        # Find schedule in MongoDB
+        collection = schedule_db.get_collection(student.group.en)
+        schedule = await collection.find().to_list()
+
+        # Get grades
+        grades_db = mongo.get_database("grades")
+        grades_doc = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group.en)
+        
+        users_db = mongo.get_database("users")
+        collection = users_db.get_collection("teachers")
+        for lesson in schedule:
+          teacher = await collection.find_one({"edbo_id": lesson.pop("teacher_edbo")})
+          updated_lesson = {
+            **lesson,
+            "teacher": UserInitial.model_validate(teacher),
+            "grade": grades_doc.get(lesson["subject"], {}).get(lesson["date"])
+          }
+          lesson.clear()
+          lesson.update(SchedulePrivate.model_validate(updated_lesson).model_dump())
+
+        # Store student schedule in Redis cache
+        await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(schedule))
+
+        return schedule
       
-      users_db = mongo.get_database("users")
-      collection = users_db.get_collection("teachers")
-      for lesson in schedule:
-        teacher = await collection.find_one({"edbo_id": lesson.pop("teacher_edbo")})
-        lesson.update(
-          {"teacher": UserInitial.model_validate(teacher),
-           "grade": grades_doc.get(lesson["subject"], {}).get(lesson["date"])})
-      return schedule
+      except Exception as err:
+        logger.error(err)
+        print(err)
+        raise HTTPException(
+          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+          detail="Internal server error."
+        )
+      
+
 
     case "teachers":
       teacher = UserBase.model_validate(user)
