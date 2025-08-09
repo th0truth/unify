@@ -3,7 +3,6 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
 from typing import Dict, Any
-import secrets
 
 private_key = rsa.generate_private_key(
   public_exponent=65537,
@@ -67,8 +66,6 @@ class Settings(BaseSettings):
     "teacher": "Authorize as a teacher with appropriate privileges.",
     "admin": "Authorize as a admin with appropriate privileges."
   }
-
-  SECRET_KEY: str = secrets.token_hex(32)
 
   PRIVATE_KEY_PEM: bytes = private_key.private_bytes(
     encoding=serialization.Encoding.PEM,
