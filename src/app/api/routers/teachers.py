@@ -16,13 +16,12 @@ from api.dependencies import (
   get_mongo_client,
   get_current_user
 )
-import crud
+from core.crud import UserCRUD
 
 router = APIRouter(tags=["Teachers"])
 
 @router.post("/create",
   status_code=status.HTTP_201_CREATED,
-  response_model=TeacherBase,
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def create_teacher(
   create_teacher: Annotated[TeacherCreate, Body()],
@@ -31,11 +30,18 @@ async def create_teacher(
   """
   Creates a teacher account.
   """
+  # Check if the user already exists
   users_db = mongo.get_database("users")
-  teacher = TeacherBase.model_validate(
-    await crud.create_user(users_db, user=create_teacher)  
-  )
-  return teacher
+  if await UserCRUD(users_db).find(username=create_teacher.edbo_id):
+    raise HTTPException(
+      status_code=status.HTTP_409_CONFLICT,
+      detail="User already exists."
+    )
+  
+  # Create a teacher account
+  await UserCRUD(users_db).create(create_teacher)  
+
+  return {"message": "The teacher account was created successfully."}
 
 @router.patch("/assessment/{edbo_id}",
   status_code=status.HTTP_200_OK)

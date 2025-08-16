@@ -25,13 +25,13 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
+from core.crud import UserCRUD
 import crud
 
 router = APIRouter(tags=["Students"])
 
 @router.post("/create",
   status_code=status.HTTP_201_CREATED,
-  response_model=StudentBase,
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def create_student(
   create_student: Annotated[StudentCreate, Body()],
@@ -42,28 +42,26 @@ async def create_student(
   """
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
-    collection = groups_db.get_collection(degree)
-    if (group := await collection.find_one({"group.en": create_student.group})):
+    if (group := await groups_db[degree].find_one({"group.en": create_student.group.en})):
       break
-
   if not group:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="The student's group not found."
     )
   
+  # Check if the user already exists
   users_db = mongo.get_database("users")
-  if await crud.get_user_by_username(users_db, username=create_student.edbo_id):
+  if await UserCRUD(users_db).find(username=create_student.edbo_id):
     raise HTTPException(
       status_code=status.HTTP_409_CONFLICT,
-      detail="User already exits."
+      detail="User already exists."
     )
 
-  student = StudentBase.model_validate(
-    await crud.create_user(users_db, user=create_student.model_dump())
-  )
+  # Create a student account
+  await UserCRUD(users_db).create(create_student)
 
-  return student
+  return {"message": "The student account was created successfully."}
 
 @router.post("/{group}/all",
   status_code=status.HTTP_200_OK,

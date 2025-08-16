@@ -1,10 +1,18 @@
 from typing import Optional, List, Union
+
+from core.config import ModelType
 from core.security.utils import Hash
+
 from .base import BaseCRUD
 
 class UserCRUD(BaseCRUD):
   def __init__(self, db):
     super().__init__(db)
+
+  async def create(self, user: ModelType):
+    user.password = Hash.hash(plain=user.password)
+    await self.db[user.role].insert_one(user.model_dump())
+    return user
 
   async def authenticate(self, *, username: Union[str, int], plain_pwd: str, exclude: Optional[List] = None) -> Union[dict, None]:
     """Authenticate user using credentials."""
