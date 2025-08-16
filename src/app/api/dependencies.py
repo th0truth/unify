@@ -6,12 +6,10 @@ from datetime import timedelta
 import json
 
 from core.config import settings
-from core.logger import logger
 
 from core.security.jwt import OAuthJWTBearer
 from core.db import MongoClient, RedisClient
-from core.schemas.token import TokenData
-from core.crud import UserCRUD
+from crud import UserCRUD
 
 async def get_mongo_client() -> AsyncGenerator[MongoClient, None]:
   """Dependency to get MongoDB client."""
