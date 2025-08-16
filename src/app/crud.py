@@ -75,13 +75,6 @@ async def authenticate_user(db: AsyncDatabase, *, username: str | int, plain_pwd
       headers={"WWW-Authenticate": "Bearer"}
     )
   
-  # Check a user's privileges
-  for scope in user.get("scopes"):
-    if scope not in settings.scopes:
-      raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid user's privileges."
-      )
   if exclude:
     for key in exclude:
       user.pop(key) 

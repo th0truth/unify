@@ -30,12 +30,10 @@ async def get_redis_client() -> AsyncGenerator[RedisClient, None]:
 
 # OAuth2 scheme for authentication
 oauth2_scheme = OAuth2PasswordBearer(
-  tokenUrl=f"{settings.API_V1_STR}/auth/login",
-  scopes=settings.scopes
+  tokenUrl=f"{settings.API_V1_STR}/auth/login"
 )
 
 async def get_current_user(
-  security_scopes: SecurityScopes,
   token: Annotated[str, Depends(oauth2_scheme)],
   redis: Annotated[Redis, Depends(get_redis_client)],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
@@ -80,18 +78,6 @@ async def get_current_user(
     # Store user profile in Redis cache
     await redis.setex(f"cache:user:{username}:profile", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
 
-    # Validate TokenData model
-    token_data = TokenData(edbo_id=user.get("edbo_id"), scopes=user.get("scopes"))
-    
-    # Check a user's privileges 
-    if security_scopes.scopes:
-      for scope in token_data.scopes:
-        if scope not in security_scopes.scopes:
-          raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Not enough permissions."
-          )
-        
     return user
   except Exception as err:
     logger.error(err)

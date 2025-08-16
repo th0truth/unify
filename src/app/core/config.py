@@ -61,12 +61,6 @@ class Settings(BaseSettings):
   JWT_ALGORITHM: str = "RS256"
   JWT_EXPIRE_MINUTES: int
 
-  scopes: Dict[str, Any] = {
-    "student": "Authorize as a student with appropriate privileges.",
-    "teacher": "Authorize as a teacher with appropriate privileges.",
-    "admin": "Authorize as a admin with appropriate privileges."
-  }
-
   PRIVATE_KEY_PEM: bytes = private_key.private_bytes(
     encoding=serialization.Encoding.PEM,
     format=serialization.PrivateFormat.PKCS8,
