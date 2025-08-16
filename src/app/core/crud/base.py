@@ -12,6 +12,14 @@ class BaseCRUD:
 
   async def read(self, collection: str, filter: Any):
     return await self.db[collection].find_one(filter)
+
+  async def update(self, collection: str, *, update: dict, filter: Any = {}):
+    result = await self.db[collection].update_one(filter, update={"$set": update})
+    return result.modified_count
+
+  async def update_all(self, collection: str, *, update: dict, filter: Any = {}) -> int:
+    result = await self.db[collection].update_many(filter, update={"$set": update})
+    return result.modified_count
   
   async def read_all(self, collection: str, *, min: int = 0, max: Optional[int] = None):
     objects = await self.db[collection].find().to_list(max)
