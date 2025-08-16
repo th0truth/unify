@@ -1,9 +1,6 @@
 from typing import Annotated, AsyncGenerator
 from fastapi import Depends, HTTPException, status
-from fastapi.security import (
-  OAuth2PasswordBearer,
-  SecurityScopes
-)
+from fastapi.security import OAuth2PasswordBearer
 from redis.asyncio import Redis
 from datetime import timedelta
 import json
@@ -14,7 +11,7 @@ from core.logger import logger
 from core.security.jwt import OAuthJWTBearer
 from core.db import MongoClient, RedisClient
 from core.schemas.token import TokenData
-import crud
+from core.crud import UserCRUD
 
 async def get_mongo_client() -> AsyncGenerator[MongoClient, None]:
   """Dependency to get MongoDB client."""
@@ -68,7 +65,7 @@ async def get_current_user(
     
     # Check if user exists in MongoDB
     users_db = mongo.get_database("users")
-    if not (user := await crud.get_user_by_username(users_db, username=username, exclude=["_id", "password"])):
+    if not (user := await UserCRUD(users_db).get_by_username(users_db, username=username, exclude=["_id", "password"])):
       raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Couldn't validate user credentials.",
