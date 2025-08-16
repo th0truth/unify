@@ -40,7 +40,12 @@ async def login(
   if not (user_cache := await redis.get(f"cache:user:{form_data.username}:profile")):
     # Authenticate user credentials from the MongoDB database
     users_db = mongo.get_database("users")
-    user = await UserCRUD(users_db).authenticate(username=form_data.username, plain_pwd=form_data.password, exclude=["_id", "password"])
+    if not (user := await UserCRUD(users_db).authenticate(username=form_data.username, plain_pwd=form_data.password, exclude=["_id", "password"])):
+      raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Couldn't validate credentials",
+        headers={"WWW-Authenticate": "Bearer"}
+      )
   else:
     user = json.loads(user_cache)
   
