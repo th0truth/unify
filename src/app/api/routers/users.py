@@ -114,7 +114,11 @@ async def update_user(
   users_db = mongo.get_database("users")
   
   # Update the user data
-  await crud.update_user(users_db, edbo_id=edbo_id, update_doc=update_user)
+  if not (await UserCRUD(users_db).update(username=edbo_id, update=update_user)):
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="User not found."
+    )
   
   # Delete user profile from Redis cache
   await redis.delete(f"cache:user:{edbo_id}:profile")

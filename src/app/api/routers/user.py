@@ -19,7 +19,6 @@ from api.dependencies import (
   get_current_user
 )
 from core.crud import UserCRUD
-import crud
 
 router = APIRouter(tags=["User"])
 
@@ -65,7 +64,7 @@ async def add_user_email(
   edbo_id = user.get("edbo_id")
 
   # Update the user data
-  await crud.update_user(users_db, edbo_id=edbo_id, update_doc={"email": {"address": user_update.email, "is_verified": False}})
+  await UserCRUD(users_db).update(username=edbo_id, update_doc={"email": {"address": user_update.email, "is_verified": False}})
 
   # Generate verification code
   verification_code = generate_verification_code()
@@ -121,9 +120,9 @@ async def update_password_me(
     )
 
   # Update the user data
-  await crud.update_user(users_db, edbo_id=user.get("edbo_id"), update_doc={"password": Hash.hash(plain=update_body.new_password)})
+  await UserCRUD(users_db).update(username=user.get("edbo_id"), update={"password": Hash.hash(plain=update_body.new_password)})
 
-  return {"message": "The password has been updated."}
+  return {"message": "The password was updated."}
 
 @router.patch("/password/recovery",
   status_code=status.HTTP_200_OK)
@@ -135,20 +134,16 @@ async def password_recovery(
   """
   Password recovery for the current user.
   """
-  # Get the user's email from the MongoDB database.
+  # Update the user data
   users_db = mongo.get_database("users")
-  user = await crud.get_user_by_username(users_db, username=update_body.email)
-  if not user:
+  if not (user := await UserCRUD(users_db).update(username=update_body.email, update={"password": Hash.hash(plain=update_body.new_password)})):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
-      detail="Can't find your account."
+      detail="User not found."
     )
-  
+
   # Generate verification code
   verification_code = generate_verification_code()
-
-  # Update the user data
-  await crud.update_user(users_db, edbo_id=user.get("edbo_id"), update_doc={"password": Hash.hash(plain=update_body.new_password)})
 
   # Render HTML template
   html_code = render_template(
