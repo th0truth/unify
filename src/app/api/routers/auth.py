@@ -22,7 +22,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
-import crud
+from core.crud import UserCRUD
 
 router = APIRouter(tags=["Authentication"])
 
@@ -40,7 +40,7 @@ async def login(
   if not (user_cache := await redis.get(f"cache:user:{form_data.username}:profile")):
     # Authenticate user credentials from the MongoDB database
     users_db = mongo.get_database("users")
-    user = await crud.authenticate_user(users_db, username=form_data.username, plain_pwd=form_data.password, exclude=["_id", "password"])
+    user = await UserCRUD(users_db).authenticate(username=form_data.username, plain_pwd=form_data.password, exclude=["_id", "password"])
   else:
     user = json.loads(user_cache)
   
@@ -123,13 +123,3 @@ async def logout(
     )
   
   return {"message": "Successfully logged out."}
-
-# @router.get("/{code}/verify",
-#   status_code=status.HTTP_200_OK)
-# async def verify_code(
-#   code: Annotated[int, Path()],
-#   user: Annotated[dict, Depends(get_current_user)],
-#   redis: Annotated[Redis, Depends(get_redis_client)]
-# ):
-#   a = await redis.hget(f"session:code:{code}", user.get("edbo_id"))
-#   print(a)

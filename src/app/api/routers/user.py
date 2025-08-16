@@ -18,6 +18,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
+from core.crud import UserCRUD
 import crud
 
 router = APIRouter(tags=["User"])
@@ -48,14 +49,19 @@ async def add_user_email(
   """
   # Get user's email from the MongoDB database
   users_db = mongo.get_database("users")
-  if await crud.get_user_by_username(users_db, username=user_update.email):
+  if await UserCRUD(users_db).get_by_username(username=user_update.email):
     raise HTTPException(
       status_code=status.HTTP_409_CONFLICT,
       detail="That email is already associated with another account."
     )
   
   # Verify the user's credentials
-  user = await crud.authenticate_user(users_db, username=user.get("edbo_id"), plain_pwd=user_update.password)
+  if not (user := await UserCRUD(users_db).authenticate(username=user.get("edbo_id"), plain_pwd=user_update.password)):
+    raise HTTPException(
+      status_code=status.HTTP_401_UNAUTHORIZED,
+      detail="Couldn't validate credentials",
+      headers={"WWW-Authenticate": "Bearer"}
+    )
   edbo_id = user.get("edbo_id")
 
   # Update the user data
@@ -107,7 +113,12 @@ async def update_password_me(
   users_db = mongo.get_database("users")
 
   # Verify the user's credentials
-  user = await crud.authenticate_user(users_db, username=user.get("edbo_id"), plain_pwd=update_body.current_password)
+  if not (user := await UserCRUD(users_db).authenticate(username=user.get("edbo_id"), plain_pwd=update_body.current_password)):
+    raise HTTPException(
+      status_code=status.HTTP_401_UNAUTHORIZED,
+      detail="Couldn't validate credentials",
+      headers={"WWW-Authenticate": "Bearer"}
+    )
 
   # Update the user data
   await crud.update_user(users_db, edbo_id=user.get("edbo_id"), update_doc={"password": Hash.hash(plain=update_body.new_password)})
