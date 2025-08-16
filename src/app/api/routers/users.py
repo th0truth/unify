@@ -6,7 +6,6 @@ from fastapi import (
   Security,
   Depends,
   Path,
-  Query,
   Body
 )
 import json
@@ -88,6 +87,7 @@ async def read_users(
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def update_all_users(
   role: Annotated[str, Path()],
+  
   update_user: Annotated[UserUpdate, Body()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
@@ -95,7 +95,11 @@ async def update_all_users(
   Updates users data.
   """
   users_db = mongo.get_database("users")
-  await crud.update_all_users(users_db, role=role, update_doc=update_user)
+  if not (await UserCRUD(users_db).update_all(role, update=update_user)):
+    raise HTTPException(
+      status_code=status.HTTP_409_CONFLICT,
+      detail="Failed to update all users."
+    )
   
   return {"message": "User accounts has been updated."}
 
