@@ -65,7 +65,7 @@ async def get_current_user(
     
     # Check if user exists in MongoDB
     users_db = mongo.get_database("users")
-    if not (user := await UserCRUD(users_db).get_by_username(users_db, username=username, exclude=["_id", "password"])):
+    if not (user := await UserCRUD(users_db).get_by_username(username=username, exclude=["_id", "password"])):
       raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Couldn't validate user credentials.",

@@ -10,7 +10,7 @@ class UserCRUD(BaseCRUD):
     """Fetch user profile from MongoDB database."""
     for collection in await self.db.list_collection_names():
       user = await self.db[collection].find_one(
-        {"edbo_id": int(username)} if isinstance(username, int) or username.isdigit() else {"email": username})
+        {"edbo_id": int(username)} if isinstance(username, int) or username.isdigit() else {"email.address": username})
       if user: break
     if exclude:
       for key in exclude:
