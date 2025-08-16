@@ -75,7 +75,7 @@ async def read_students(
   Returns a list of all existing students from the given group.
   """
   users_db = mongo.get_database("users")
-  return await crud.read_users(users_db, role="students", filter="group.en", value=group)
+  return await UserCRUD(users_db).read_all("students", filter={"group.en": group})
 
 @router.post("/my/grades",
   status_code=status.HTTP_200_OK)

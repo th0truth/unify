@@ -49,7 +49,7 @@ async def add_user_email(
   """
   # Get user's email from the MongoDB database
   users_db = mongo.get_database("users")
-  if await UserCRUD(users_db).get_by_username(username=user_update.email):
+  if await UserCRUD(users_db).find(username=user_update.email):
     raise HTTPException(
       status_code=status.HTTP_409_CONFLICT,
       detail="That email is already associated with another account."
