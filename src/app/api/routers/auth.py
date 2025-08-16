@@ -22,7 +22,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
-from core.crud import UserCRUD
+from crud import UserCRUD
 
 router = APIRouter(tags=["Authentication"])
 

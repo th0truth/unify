@@ -25,8 +25,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
-from core.crud import UserCRUD, StudentCRUD
-import crud
+from crud import UserCRUD, StudentCRUD
 
 router = APIRouter(tags=["Students"])
 
