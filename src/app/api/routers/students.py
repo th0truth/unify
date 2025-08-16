@@ -25,7 +25,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
-from core.crud import UserCRUD
+from core.crud import UserCRUD, StudentCRUD
 import crud
 
 router = APIRouter(tags=["Students"])
@@ -91,7 +91,7 @@ async def get_current_student_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  grades = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group.en, subject=grade_body.subject, date=date) 
+  grades = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.en, subject=grade_body.subject, date=date) 
   return grades
 
 @router.get("/my/grades/all",
@@ -107,7 +107,7 @@ async def get_current_student_all_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  grades = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group.en, date=date)
+  grades = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.en, date=date)
   return grades
 
 @router.post("/{edbo_id}/grades",
@@ -133,7 +133,7 @@ async def get_student_grades(
   student = StudentBase.model_validate(user)
   
   grades_db = mongo.get_database("grades")
-  grades = await crud.get_grades(grades_db, edbo_id=edbo_id, group=student.group.en, subject=grade_body.subject, date=date)
+  grades = await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.en, subject=grade_body.subject, date=date)
   return grades
 
 @router.get("/{edbo_id}/grades/all",
@@ -157,7 +157,7 @@ async def get_student_all_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  grades = await crud.get_grades(grades_db, edbo_id=edbo_id, group=student.group.en, date=date)
+  grades = await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.en, date=date)
   return grades
 
 @router.get("/disciplines",

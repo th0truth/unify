@@ -38,7 +38,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
-import crud
+from core.crud import StudentCRUD
 
 router = APIRouter(tags=["Schedule"])
 
@@ -84,7 +84,7 @@ async def get_current_user_schedule(
 
         # Get grades
         grades_db = mongo.get_database("grades")
-        grades_doc = await crud.get_grades(grades_db, edbo_id=student.edbo_id, group=student.group.en)
+        grades_doc = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.en)
         
         users_db = mongo.get_database("users")
         collection = users_db.get_collection("teachers")
