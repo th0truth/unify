@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import Annotated, Optional, List
 from fastapi import (
   APIRouter,
   HTTPException,
@@ -22,6 +22,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
+from core.crud import UserCRUD
 import crud
 
 router = APIRouter(tags=["Users"])
@@ -52,7 +53,7 @@ async def read_user(
     
     # Check if user exists in MongoDB
     users_db = mongo.get_database("users")
-    if not (user := await crud.read_user(users_db, edbo_id=edbo_id)):
+    if not (user := await UserCRUD(users_db).find(username=edbo_id)):
       raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="User not found."
@@ -74,15 +75,13 @@ async def read_user(
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def read_users(
   role: Annotated[str, Path()],
-  filter: Annotated[str, Query()],
-  value: Annotated[str, Query()],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]   
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],   
 ):
   """
   Returns all users.
   """
   users_db = mongo.get_database("users")
-  return await crud.read_users(users_db, role=role, filter=filter, value=value)
+  return await UserCRUD(users_db).read_all(role)
 
 @router.patch("/{role}/update",
   status_code=status.HTTP_200_OK,
