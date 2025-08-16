@@ -33,11 +33,18 @@ class UserCRUD(BaseCRUD):
       update={"$set": update}
     )
 
+  async def delete(self, username: Union[str, int]):
+    """Deletes a user."""
+    if not (user := await self.find(username=username)):
+      return
+    result = await self.db[user.get("role")].delete_one(user)
+    return result.deleted_count
+
   async def authenticate(self, *, username: Union[str, int], plain_pwd: str, exclude: Optional[List] = None) -> Union[dict, None]:
     """Authenticate user using credentials."""
     user = await self.find(username=username)
     if not user or not Hash.verify(plain_pwd, user.get("password")):
-      return None
+      return
     if exclude:
       for key in exclude:
         user.pop(key)

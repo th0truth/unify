@@ -136,12 +136,16 @@ async def delete_user(
   """
   Deletes an exiting user account.
   """
-  users_db = mongo.get_database("users")
 
   # Delete the user account
-  await crud.delete_user(users_db, edbo_id=edbo_id)
+  users_db = mongo.get_database("users")
+  if not await UserCRUD(users_db).delete(username=edbo_id):
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="User not found."
+    )
 
   # Delete user profile from Redis cache
   await redis.delete(f"cache:user:{edbo_id}:profile")
 
-  return {"message": "The user account has been deleted."}
+  return {"message": "The user account was deleted successfully."}
