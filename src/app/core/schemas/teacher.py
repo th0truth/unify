@@ -8,7 +8,9 @@ class TeacherBase(UserBase):
   specialities: list
 
 class TeacherCreate(TeacherBase):
-  group: str
-  role: str
+  scopes: list = [
+    "teacher"
+  ]
+  role: str = "teachers"
   acc_date: datetime
   password: PASSWORDstr

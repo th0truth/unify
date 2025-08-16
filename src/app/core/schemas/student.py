@@ -1,7 +1,7 @@
 from datetime import datetime
-from pydantic import Field
 
 from .user import UserBase
+from .etc import PASSWORDstr
 from .group import LocalizedGroup
 
 class StudentBase(UserBase):
@@ -14,6 +14,9 @@ class StudentBase(UserBase):
   class_teacher_edbo: int
 
 class StudentCreate(StudentBase):
+  scopes: list = [
+    "student"
+  ]
   role: str = "students"
   acc_date: datetime
-  password: str = Field(..., min_length=8, max_length=256)
+  password: PASSWORDstr

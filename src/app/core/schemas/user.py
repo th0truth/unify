@@ -4,7 +4,6 @@ from pydantic import (
   BaseModel,
   EmailStr
 )
-from .etc import PASSWORDstr
 
 class UserInitial(BaseModel):
   first_name: str
@@ -22,10 +21,6 @@ class UserPrivate(UserBase):
   phone_number: Optional[List[int]] = None
   password: Optional[str] = None
   scopes: list
-
-class UserCreate(UserBase):
-  acc_date: datetime
-  password: PASSWORDstr
 
 class UserUpdate(UserBase):
   scopes: list
