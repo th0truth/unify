@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Dict, List
 from fastapi import (
   HTTPException,
   APIRouter,
@@ -9,14 +9,14 @@ from fastapi import (
   Body
 )
 from core.schemas.student import StudentBase
-from core.schemas.teacher import TeacherBase, TeacherCreate
+from core.schemas.teacher import TeacherBase, TeacherCreate, TeacherGroup
 from core.schemas.grade import SetGrade
 from core.db import MongoClient
 from api.dependencies import (
   get_mongo_client,
   get_current_user
 )
-from crud import UserCRUD
+from crud import UserCRUD, BaseCRUD
 
 router = APIRouter(tags=["Teachers"])
 
@@ -42,6 +42,36 @@ async def create_teacher(
   await UserCRUD(users_db).create(create_teacher)  
 
   return {"message": "The teacher account was created successfully."}
+
+@router.get("/assigned/groups",
+  status_code=status.HTTP_200_OK,
+  response_model=Dict[str, List[TeacherGroup]])
+async def get_assigned_groups(
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Returns assigned groups for the teacher.
+  """
+  teacher = TeacherBase.model_validate(user)
+
+  groups = {}
+  groups_db = mongo.get_database("groups")
+  for degree in await groups_db.list_collection_names():
+    group_list = await BaseCRUD(groups_db).read_all(
+      collection=degree,
+      filter={
+        "$expr": {
+        "$in": [
+            teacher.edbo_id,
+            {"$map": {"input": {"$objectToArray": "$disciplines"}, "as": "d", "in": "$$d.v"}}
+          ]
+        }
+      }
+    )
+    groups.update({degree: group_list})
+  
+  return groups
 
 @router.patch("/assessment/{edbo_id}",
   status_code=status.HTTP_200_OK)
