@@ -9,6 +9,7 @@ from fastapi import (
   Body
 )
 from core.config import settings
+from core.schemas.user import UserInitial
 from core.schemas.etc import UpdateEmail, UpdatePassword, PasswordRecovery
 from core.security.utils import Hash, send_email, render_template, generate_verification_code
 from core.db import MongoClient
@@ -31,6 +32,17 @@ async def get_active_user(
 ):
   """
   Returns user data.
+  """
+  return user
+
+@router.get("/initial", 
+  status_code=status.HTTP_200_OK,
+  response_model=UserInitial)
+async def get_user_initial(
+  user: Annotated[dict, Depends(get_current_user)]
+):
+  """
+  Returns user initial.
   """
   return user
 
