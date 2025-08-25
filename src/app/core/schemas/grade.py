@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import Optional
 
 class GradeBase(BaseModel):
   subject: str
@@ -7,3 +6,7 @@ class GradeBase(BaseModel):
 class SetGrade(GradeBase):
   grade: int
   date: str
+
+class GradeGroup(BaseModel):
+  edbo_id: int
+  disciplines: dict
