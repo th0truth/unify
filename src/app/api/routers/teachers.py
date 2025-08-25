@@ -85,6 +85,13 @@ async def get_assesment_students(
   """
   Returns list of all students grades.
   """
+  grades_db = mongo.get_database("grades")
+  if group not in await grades_db.list_collection_names():
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Group not found."
+    )
+
   role = user.get("role")
   match role:
     case "teachers":
@@ -96,14 +103,7 @@ async def get_assesment_students(
         )
     case _:
       pass
-  
-  grades_db = mongo.get_database("grades")
-  if group not in await grades_db.list_collection_names():
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Group not found."
-    )
-  
+    
   grades = await BaseCRUD(grades_db).read_all(
     group,
     filter={f"disciplines.{discipline}": {"$exists": True}},
