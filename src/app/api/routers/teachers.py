@@ -10,7 +10,7 @@ from fastapi import (
 )
 from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase, TeacherCreate, TeacherGroup
-from core.schemas.grade import SetGrade
+from core.schemas.grade import SetGrade, GradeGroup
 from core.db import MongoClient
 from api.dependencies import (
   get_mongo_client,
@@ -72,6 +72,45 @@ async def get_assigned_groups(
     groups.update({degree: group_list})
   
   return groups
+
+@router.post("/assesment/{group}/all",
+  status_code=status.HTTP_200_OK,
+  response_model=List[GradeGroup])
+async def get_assesment_students(
+  group: Annotated[str, Path()],
+  discipline: Annotated[str, Body()],
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher", "admin"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Returns list of all students grades.
+  """
+  role = user.get("role")
+  match role:
+    case "teachers":
+      teacher = TeacherBase.model_validate(user)
+      if discipline not in teacher.disciplines:
+        raise HTTPException(
+          status_code=status.HTTP_403_FORBIDDEN,
+          detail="You don't have access to this discipline."
+        )
+    case _:
+      pass
+  
+  grades_db = mongo.get_database("grades")
+  if group not in await grades_db.list_collection_names():
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Group not found."
+    )
+  
+  grades = await BaseCRUD(grades_db).read_all(
+    group,
+    filter={f"disciplines.{discipline}": {"$exists": True}},
+    projection={"edbo_id": 1, f"disciplines.{discipline}": 1}
+  )
+
+  return grades
 
 @router.patch("/assessment/{edbo_id}",
   status_code=status.HTTP_200_OK)
