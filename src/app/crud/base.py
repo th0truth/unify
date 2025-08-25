@@ -21,6 +21,6 @@ class BaseCRUD:
     result = await self.db[collection].update_many(filter, update={"$set": update})
     return result.modified_count
   
-  async def read_all(self, collection: str, *, filter: Any = {}, min: int = 0, max: Optional[int] = None):
-    objects = await self.db[collection].find(filter).to_list(max)
-    return objects[min:]
+  async def read_all(self, collection: str, *, filter: Any = {}, offset: int = 0, length: Optional[int] = None):
+    objects = await self.db[collection].find(filter).to_list(length)
+    return objects[offset:]
