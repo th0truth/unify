@@ -25,7 +25,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
-from crud import UserCRUD, StudentCRUD
+from crud import BaseCRUD, UserCRUD, StudentCRUD
 
 router = APIRouter(tags=["Students"])
 
@@ -173,22 +173,20 @@ async def get_student_disciplines(
 
   redis_key = f"cache:group:{student.group.en}:disciplines"
 
-  try:
-    # Check if group disciplines exist in Redis cache
-    if (disciplines_cache := await redis.get(redis_key)):
-      try:
-        disciplines = json.loads(disciplines_cache)
-        return disciplines
-      except json.JSONDecodeError:
-        pass
+  # Check if group disciplines exist in Redis cache
+  if (disciplines_cache := await redis.get(redis_key)):
+    try:
+      disciplines = json.loads(disciplines_cache)
+      return disciplines
+    except json.JSONDecodeError:
+      pass
     
+  else:
     disciplines = {}
     groups_db = mongo.get_database("groups")
     for degree in await groups_db.list_collection_names():
-      collection = groups_db.get_collection(degree)
-      if (student_group := await collection.find_one({"group.en": student.group.en})):
+      if (student_group := await BaseCRUD(groups_db).read(degree, filter={"group.en": student.group.en})):
         break
-
     if not student_group:
       raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
@@ -196,20 +194,14 @@ async def get_student_disciplines(
       )
     
     users_db = mongo.get_database("users")
-    collection = users_db.get_collection("teachers")
+    # collection = users_db.get_collection("teachers")
     for subject, edbo_id in student_group.get("disciplines").items():
-      teacher = TeacherBase.model_validate(await collection.find_one({"edbo_id": edbo_id}))
-      disciplines.update({
-        subject: teacher.model_dump()
-      })
+      if (teacher := await UserCRUD(users_db).find(username=edbo_id)):
+        disciplines.update({
+          subject: TeacherBase(**teacher).model_dump()
+        })
 
     # Store group disciplines in Redis cache
     await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, value=json.dumps(disciplines))
 
     return disciplines
-  except Exception as err:
-    logger.error(err)
-    raise HTTPException(
-      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-      detail="Internal server error."
-    )
