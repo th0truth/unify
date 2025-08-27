@@ -8,6 +8,7 @@ from fastapi import (
   Path,
   Body
 )
+from core.schemas.group import GroupBase
 from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase, TeacherCreate, TeacherGroup
 from core.schemas.grade import SetGrade, GradeGroup
@@ -42,6 +43,38 @@ async def create_teacher(
   await UserCRUD(users_db).create(create_teacher)  
 
   return {"message": "The teacher account was created successfully."}
+
+@router.get("/assigned/{group}/disciplines",
+  response_model=List,
+  status_code=status.HTTP_200_OK)
+async def get_assigned_disicplines(
+  group: Annotated[str, Path()],
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Returns list of assinged disciplines.
+  """
+  teacher = TeacherBase.model_validate(user)
+
+  groups_db = mongo.get_database("groups")
+  for degree in await groups_db.list_collection_names():
+    if (student_group := await BaseCRUD(groups_db).read(degree, filter={"group.en": group})):
+      break
+  if not student_group: 
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Group not found."
+    )
+  
+  student_group = GroupBase.model_validate(student_group)
+  
+  disciplines = []
+  for discipline in student_group.disciplines:
+    if discipline in teacher.disciplines:
+      disciplines.append(discipline)
+
+  return disciplines
 
 @router.get("/assigned/groups",
   status_code=status.HTTP_200_OK,
