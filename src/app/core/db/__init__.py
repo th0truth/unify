@@ -1,4 +1,4 @@
 __all__ = ["MongoClient", "RedisClient"]
 
-from .database import MongoClient
+from .mongo import MongoClient
 from .redis import RedisClient
