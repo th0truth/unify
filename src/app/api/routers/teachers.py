@@ -57,9 +57,13 @@ async def get_assigned_disicplines(
   """
   teacher = TeacherBase.model_validate(user)
 
-  groups_db = mongo.get_database("groups")
+  query = {"$or": [
+    {"group.en": {"$regex": group, "$options": "i"}},
+    {"group.ua": {"$regex": group, "$options": "i"}}
+  ]}
+  groups_db = mongo.get_database("groups")  
   for degree in await groups_db.list_collection_names():
-    if (student_group := await BaseCRUD(groups_db).read(degree, filter={"group.en": group})):
+    if (student_group := await BaseCRUD(groups_db).read(degree, filter=query)):
       break
   if not student_group: 
     raise HTTPException(
