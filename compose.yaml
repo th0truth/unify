@@ -7,8 +7,3 @@ services:
     env_file: .env
     ports:
       - "10000:10000"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:10000"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
