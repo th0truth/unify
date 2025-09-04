@@ -48,7 +48,7 @@ async def get_current_user_group(
       student = StudentBase.model_validate(user)
       for degree in await groups_db.list_collection_names():
         collection = groups_db.get_collection(degree)
-        if (group := await collection.find_one({"group.en": student.group.en})):
+        if (group := await collection.find_one({"group.ua": student.group.ua})):
           break
 
     case "teachers":
@@ -101,7 +101,7 @@ async def get_group(
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
     collection = groups_db.get_collection(degree)
-    if (student_group := await collection.find_one({"group.en": group})):
+    if (student_group := await collection.find_one({"group.ua": group})):
       break
   if not student_group:
     raise HTTPException(
@@ -133,7 +133,7 @@ async def create_group(
   
   for degree in collections:
     collection = groups_db.get_collection(degree)
-    if await collection.find_one({"group.en": create_group.group.en}):
+    if await collection.find_one({"group.ua": create_group.group.ua}):
       raise HTTPException(
         status_code=status.HTTP_409_CONFLICT,
         detail="Group already exits."
@@ -157,7 +157,7 @@ async def delete_group(
   groups_db = mongo.get_database("groups") 
   for degree in await groups_db.list_collection_names():
     collection = groups_db.get_collection(degree)
-    if (student_group := await collection.find_one({"group.en": group})):
+    if (student_group := await collection.find_one({"group.ua": group})):
       break
   if not student_group:
     raise HTTPException(

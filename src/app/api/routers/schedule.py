@@ -67,7 +67,7 @@ async def get_current_user_schedule(
     case "students":
       student = StudentBase.model_validate(user) 
  
-      redis_key = f"cache:group:{student.group.en}:schedule"
+      redis_key = f"cache:group:{student.group.ua}:schedule"
 
       try:
         # Check if student schedule exits in Redis cache
@@ -79,12 +79,12 @@ async def get_current_user_schedule(
             pass
 
         # Find schedule in MongoDB
-        collection = schedule_db.get_collection(student.group.en)
+        collection = schedule_db.get_collection(student.group.ua)
         schedule = await collection.find().to_list()
 
         # Get grades
         grades_db = mongo.get_database("grades")
-        grades_doc = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.en)
+        grades_doc = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua)
         
         users_db = mongo.get_database("users")
         collection = users_db.get_collection("teachers")
@@ -191,7 +191,7 @@ async def create_schedule(
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
     collection = groups_db.get_collection(degree)
-    if (group := await collection.find_one({"group.en": schedule.group.en})):
+    if (group := await collection.find_one({"group.ua": schedule.group.ua})):
       break
   if not group:
     raise HTTPException(
@@ -207,7 +207,7 @@ async def create_schedule(
 
   # Insert the schedule to the MongoDB database
   schedule_db = mongo.get_database("schedule")
-  collection = schedule_db.get_collection(schedule.group.en)
+  collection = schedule_db.get_collection(schedule.group.ua)
   await collection.insert_one(
     schedule_private.model_dump(exclude_none=True)
   )

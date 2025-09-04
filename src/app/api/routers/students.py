@@ -41,7 +41,7 @@ async def create_student(
   """
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
-    if (group := await groups_db[degree].find_one({"group.en": create_student.group.en})):
+    if (group := await groups_db[degree].find_one({"group.ua": create_student.group.ua})):
       break
   if not group:
     raise HTTPException(
@@ -74,7 +74,7 @@ async def read_students(
   Returns a list of all existing students from the given group.
   """
   users_db = mongo.get_database("users")
-  return await UserCRUD(users_db).read_all("students", filter={"group.en": group})
+  return await UserCRUD(users_db).read_all("students", filter={"group.ua": group})
 
 @router.post("/my/grades",
   status_code=status.HTTP_200_OK)
@@ -90,7 +90,7 @@ async def get_current_student_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  grades = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.en, subject=grade_body.subject, date=date) 
+  grades = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua, subject=grade_body.subject, date=date) 
   return grades
 
 @router.get("/my/grades/all",
@@ -106,7 +106,7 @@ async def get_current_student_all_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  grades = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.en, date=date)
+  grades = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua, date=date)
   return grades
 
 @router.post("/{edbo_id}/grades",
@@ -132,7 +132,7 @@ async def get_student_grades(
   student = StudentBase.model_validate(user)
   
   grades_db = mongo.get_database("grades")
-  grades = await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.en, subject=grade_body.subject, date=date)
+  grades = await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.ua, subject=grade_body.subject, date=date)
   return grades
 
 @router.get("/{edbo_id}/grades/all",
@@ -156,7 +156,7 @@ async def get_student_all_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  grades = await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.en, date=date)
+  grades = await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.ua, date=date)
   return grades
 
 @router.get("/disciplines",
@@ -171,7 +171,7 @@ async def get_student_disciplines(
   """
   student = StudentBase.model_validate(user)
 
-  redis_key = f"cache:group:{student.group.en}:disciplines"
+  redis_key = f"cache:group:{student.group.ua}:disciplines"
 
   # Check if group disciplines exist in Redis cache
   if (disciplines_cache := await redis.get(redis_key)):
@@ -185,7 +185,7 @@ async def get_student_disciplines(
     disciplines = {}
     groups_db = mongo.get_database("groups")
     for degree in await groups_db.list_collection_names():
-      if (student_group := await BaseCRUD(groups_db).read(degree, filter={"group.en": student.group.en})):
+      if (student_group := await BaseCRUD(groups_db).read(degree, filter={"group.ua": student.group.ua})):
         break
     if not student_group:
       raise HTTPException(
