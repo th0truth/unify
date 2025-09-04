@@ -8,6 +8,7 @@ from fastapi import (
   Path,
   Body
 )
+from core.schemas.user import UserInitial
 from core.schemas.group import GroupBase
 from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase, TeacherCreate, TeacherGroup
@@ -58,7 +59,7 @@ async def get_assigned_disicplines(
   teacher = TeacherBase.model_validate(user)
 
   query = {"$or": [
-    {"group.en": {"$regex": group, "$options": "i"}},
+    {"group.ua": {"$regex": group, "$options": "i"}},
     {"group.ua": {"$regex": group, "$options": "i"}}
   ]}
   groups_db = mongo.get_database("groups")  
@@ -141,13 +142,19 @@ async def get_assesment_students(
     case _:
       pass
     
-  grades = await BaseCRUD(grades_db).read_all(
+  grades_docs = await BaseCRUD(grades_db).read_all(
     group,
     filter={f"disciplines.{discipline}": {"$exists": True}},
     projection={"edbo_id": 1, f"disciplines.{discipline}": 1}
   )
 
-  return grades
+  users_db = mongo.get_database("users")
+  for grade_doc in grades_docs:
+    student = await UserCRUD(users_db).find(username=grade_doc.get("edbo_id"))
+    if student:
+      grade_doc.update({"student": UserInitial.model_validate(student)}) 
+
+  return grades_docs
 
 @router.patch("/assessment/{edbo_id}",
   status_code=status.HTTP_200_OK)
@@ -178,7 +185,7 @@ async def student_assessment(
     )
   
   grades_db = mongo.get_database("grades")
-  collection = grades_db.get_collection(student.group.en)
+  collection = grades_db.get_collection(student.group.ua)
 
   if not (await collection.find_one_and_update(
     filter={"edbo_id": edbo_id},
