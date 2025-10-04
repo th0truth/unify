@@ -39,10 +39,20 @@ class MongoClient:
       )
       await cls._client.admin.command("ping")
       logger.info("[+] Successfully connected to MongoDB.")
-    except (Exception, AutoReconnect) as err:
-      logger.error(
-        {"msg": "[x] Failed to connect to MongoDB.", "detail": err})
-      return None
+
+    except AutoReconnect as err:
+      logger.error({
+        "msg": "[x] MongoDB AutoReconnect triggered (likely DNS or network issue).",
+        "detail": str(err)
+      })
+      return
+
+    except Exception as err:
+      logger.error({
+        "msg": "[x] Unexpected erorr while connecting to MongoDB.",
+        "detail": err
+      })
+      return
 
   @classmethod
   async def close(cls):
