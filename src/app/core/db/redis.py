@@ -10,10 +10,10 @@ class RedisClient:
 
   @classmethod
   def __new__(cls, *args, **kwargs):
-      """Implement singleton pattern."""
-      if cls._instance is None:
-          cls._instance = super().__new__(cls)
-      return cls._instance
+    """Implement singleton pattern."""
+    if cls._instance is None:
+      cls._instance = super().__new__(cls)
+    return cls._instance
   
   @classmethod
   async def connect(cls):
@@ -26,19 +26,33 @@ class RedisClient:
           port=settings.REDIS_PORT,
           username=settings.REDIS_USERNAME,
           password=settings.REDIS_PASSWORD,
+          ssl=False,
           decode_responses=True,
           db=settings.REDIS_DB
         )
         alive = await cls._client.ping()
         if not alive:
           logger.error(f"Couldn't connect to Redis: {settings.REDIS_HOST}:{settings.REDIS_PORT}.")
-          return None
+          return
+        
         logger.info("[+] Successfully connected to Redis.")
         return cls._client
+
     except aioredis.ConnectionError as err:
-      logger.error({ "msg": "An error occured while connecting to Redis.", "detail": err})
-      return None
+      logger.error({
+        "msg": "[x] General connection error while connecting to Redis.",
+        "detail": str(err),
+        "cause": repr(err.__cause__)
+      })
+      return
   
+    except Exception as err:
+      logger.error({
+        "msg": "[x] Unexpected error while connecting to Redis.",
+        "detail": repr(err),
+      })
+      return
+
   @classmethod
   async def close(cls):
     """
