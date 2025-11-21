@@ -46,7 +46,7 @@ async def get_user_initial(
   """
   return user
 
-@router.patch("/email/update",
+@router.patch("/email",
   status_code=status.HTTP_200_OK)
 async def add_user_email(
   user_update: Annotated[UpdateEmail, Body()],
@@ -110,7 +110,7 @@ async def add_user_email(
   return {"message": "Email added to the user account."}
 
 
-@router.patch("/password/update",
+@router.patch("/password",
   status_code=status.HTTP_200_OK)
 async def update_password_me(
   update_body: Annotated[UpdatePassword, Body()],
@@ -136,7 +136,7 @@ async def update_password_me(
 
   return {"message": "The password was updated."}
 
-@router.patch("/password/recovery",
+@router.patch("/password-recovery",
   status_code=status.HTTP_200_OK)
 async def password_recovery(
   update_body: Annotated[PasswordRecovery, Body()],

@@ -22,7 +22,7 @@ from crud import UserCRUD, BaseCRUD
 
 router = APIRouter(tags=["Teachers"])
 
-@router.post("/create",
+@router.post("/",
   status_code=status.HTTP_201_CREATED,
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def create_teacher(

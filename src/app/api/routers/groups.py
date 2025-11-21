@@ -112,7 +112,7 @@ async def get_group(
   student_group = await get_detail_disciplines(mongo, group=student_group)
   return student_group
 
-@router.post("/create",
+@router.post("/",
   status_code=status.HTTP_201_CREATED,
   response_model=GroupCreate,
   dependencies=[Security(get_current_user, scopes=["admin"])])
@@ -145,7 +145,7 @@ async def create_group(
   
   return create_group
  
-@router.delete("/{group}/delete",
+@router.delete("/{group}",
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def delete_group(
   group: Annotated[str, Path()],

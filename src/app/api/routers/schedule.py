@@ -167,7 +167,7 @@ async def get_schedule_by_id(
     )
   return schedule_lesson
 
-@router.post("/create",
+@router.post("",
   status_code=status.HTTP_201_CREATED,
   response_model=ScheduleBase)
 async def create_schedule(
@@ -361,7 +361,7 @@ async def detach_schedule_file(
 
   return {"message": "The file has been successfully detached."}
 
-@router.put("/{group}/{lesson_id}/update",
+@router.put("/{group}/{lesson_id}",
   status_code=status.HTTP_200_OK)
 async def update_schedule(
   group: Annotated[str, Path()],
@@ -401,7 +401,7 @@ async def update_schedule(
   
   return {"message": "The lesson has been successfully updated."}
 
-@router.delete("/{group}/{lesson_id}/delete",
+@router.delete("/{group}/{lesson_id}",
   status_code=status.HTTP_200_OK,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def delete_schedule(

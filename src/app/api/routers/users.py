@@ -81,7 +81,7 @@ async def read_users(
   users_db = mongo.get_database("users")
   return await UserCRUD(users_db).read_all(role)
 
-@router.patch("/{role}/update",
+@router.patch("/{role}",
   status_code=status.HTTP_200_OK,
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def update_all_users(
@@ -102,7 +102,7 @@ async def update_all_users(
   
   return {"message": "User accounts has been updated."}
 
-@router.patch("/{edbo_id}/update",
+@router.patch("/{edbo_id}",
   status_code=status.HTTP_200_OK,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def update_user(
@@ -128,7 +128,7 @@ async def update_user(
 
   return {"message": "The user account has been updated."}
 
-@router.delete("/{edbo_id}/delete",
+@router.delete("/{edbo_id}",
   status_code=status.HTTP_200_OK,
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def delete_user(

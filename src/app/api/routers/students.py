@@ -13,7 +13,6 @@ from datetime import timedelta
 import json
 
 from core.config import settings
-from core.logger import logger
 
 from core.schemas.student import StudentBase, StudentCreate
 from core.schemas.grade import GradeBase
@@ -29,7 +28,7 @@ from crud import BaseCRUD, UserCRUD, StudentCRUD
 
 router = APIRouter(tags=["Students"])
 
-@router.post("/create",
+@router.post("/",
   status_code=status.HTTP_201_CREATED,
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def create_student(
