@@ -8,11 +8,8 @@ from fastapi import (
   Path,
   Body
 )
-from core.schemas.user import UserInitial
 from core.schemas.group import GroupBase
-from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase, TeacherCreate, TeacherGroup
-from core.schemas.grade import SetGrade, GradeGroup
 from core.db import MongoClient
 from api.dependencies import (
   get_mongo_client,
@@ -112,96 +109,3 @@ async def get_assigned_groups(
     groups.update({degree: group_list})
   
   return groups
-
-
-@router.post("/assesment/{group}/all",
-  status_code=status.HTTP_200_OK,
-  response_model=List[GradeGroup])
-async def get_assesment_students(
-  group: Annotated[str, Path()],
-  discipline: Annotated[str, Body()],
-  user: Annotated[dict, Security(get_current_user, scopes=["teacher", "admin"])],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
-):
-  """
-  Returns list of all students grades.
-  """
-  grades_db = mongo.get_database("grades")
-  if group not in await grades_db.list_collection_names():
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Group not found."
-    )
-
-  role = user.get("role")
-  match role:
-    case "teachers":
-      teacher = TeacherBase.model_validate(user)
-      if discipline not in teacher.disciplines:
-        raise HTTPException(
-          status_code=status.HTTP_403_FORBIDDEN,
-          detail="You don't have access to this discipline."
-        )
-    case _:
-      pass
-    
-  grades_docs = await BaseCRUD(grades_db).read_all(
-    group,
-    filter={f"disciplines.{discipline}": {"$exists": True}},
-    projection={"edbo_id": 1, f"disciplines.{discipline}": 1}
-  )
-
-  users_db = mongo.get_database("users")
-  for grade_doc in grades_docs:
-    student = await UserCRUD(users_db).find(username=grade_doc.get("edbo_id"))
-    if student:
-      grade_doc.update({"student": UserInitial.model_validate(student)}) 
-
-  return grades_docs
-
-
-@router.patch("/assessment/{edbo_id}",
-  status_code=status.HTTP_200_OK)
-async def student_assessment(
-  edbo_id: Annotated[int, Path()],
-  grade_body: Annotated[SetGrade, Body()],
-  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
-):
-  """
-  Assesses the student.
-  """
-  teacher = TeacherBase.model_validate(user)
-
-  users_db = mongo.get_database("users")
-  collection = users_db.get_collection("students")
-  if not (user := await collection.find_one({"edbo_id": edbo_id})):
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Student not found."
-    )
-  student = StudentBase.model_validate(user)
-
-  if grade_body.subject not in teacher.disciplines:
-    raise HTTPException(
-      status_code=status.HTTP_403_FORBIDDEN,
-      detail="You don't have access to this discipline."
-    )
-  
-  grades_db = mongo.get_database("grades")
-  collection = grades_db.get_collection(student.group.ua)
-
-  if not (await collection.find_one_and_update(
-    filter={"edbo_id": edbo_id},
-    update={"$set": {f"disciplines.{grade_body.subject}.{grade_body.date}": grade_body.grade}}
-  )):
-    await collection.insert_one(
-      {"edbo_id": edbo_id,
-       "disciplines": {
-         grade_body.subject: {
-           grade_body.date: grade_body.grade
-         }
-       }}
-    )
-    
-  return {"message": "Student successfully assessed."}
