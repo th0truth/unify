@@ -31,6 +31,7 @@ async def get_detail_disciplines(mongo: MongoClient, *, group: dict) -> dict:
   )
   return group
 
+
 @router.get("/my",
   status_code=status.HTTP_200_OK,
   response_model=GroupBase)
@@ -66,6 +67,7 @@ async def get_current_user_group(
   
   group = await get_detail_disciplines(mongo, group=group)
   return group
+
 
 @router.get("/all",
   status_code=status.HTTP_200_OK,
@@ -112,6 +114,7 @@ async def get_group(
   student_group = await get_detail_disciplines(mongo, group=student_group)
   return student_group
 
+
 @router.post("/",
   status_code=status.HTTP_201_CREATED,
   response_model=GroupCreate,
@@ -145,6 +148,7 @@ async def create_group(
   
   return create_group
  
+
 @router.delete("/{group}",
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def delete_group(

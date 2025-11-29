@@ -45,6 +45,7 @@ async def create_teacher(
 
   return {"message": "The teacher account was created successfully."}
 
+
 @router.get("/assigned/{group}/disciplines",
   response_model=List,
   status_code=status.HTTP_200_OK)
@@ -81,6 +82,7 @@ async def get_assigned_disicplines(
 
   return disciplines
 
+
 @router.get("/assigned/groups",
   status_code=status.HTTP_200_OK,
   response_model=Dict[str, List[TeacherGroup]])
@@ -110,6 +112,7 @@ async def get_assigned_groups(
     groups.update({degree: group_list})
   
   return groups
+
 
 @router.post("/assesment/{group}/all",
   status_code=status.HTTP_200_OK,
@@ -155,6 +158,7 @@ async def get_assesment_students(
       grade_doc.update({"student": UserInitial.model_validate(student)}) 
 
   return grades_docs
+
 
 @router.patch("/assessment/{edbo_id}",
   status_code=status.HTTP_200_OK)

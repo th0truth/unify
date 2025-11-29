@@ -46,6 +46,7 @@ async def get_user_initial(
   """
   return user
 
+
 @router.patch("/email",
   status_code=status.HTTP_200_OK)
 async def add_user_email(
@@ -110,6 +111,7 @@ async def add_user_email(
   return {"message": "Email added to the user account."}
 
 
+
 @router.patch("/password",
   status_code=status.HTTP_200_OK)
 async def update_password_me(
@@ -135,6 +137,7 @@ async def update_password_me(
   await UserCRUD(users_db).update(username=user.get("edbo_id"), update={"password": Hash.hash(plain=update_body.new_password)})
 
   return {"message": "The password was updated."}
+
 
 @router.patch("/password-recovery",
   status_code=status.HTTP_200_OK)

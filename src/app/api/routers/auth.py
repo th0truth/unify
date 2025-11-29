@@ -11,7 +11,6 @@ from fastapi import (
 )
 import json
 
-
 from core.config import settings
 from core.schemas.token import TokenBase, TokenPayload
 from core.security.jwt import OAuthJWTBearer
@@ -57,6 +56,7 @@ async def login(
 
   return TokenPayload(access_token=token["jwt"], role=role)
 
+
 @router.post("/token",
   status_code=status.HTTP_200_OK,
   response_model=TokenPayload)
@@ -95,6 +95,7 @@ async def auth_token(
   refresh_token = await OAuthJWTBearer.refresh(payload)
 
   return TokenPayload(access_token=refresh_token, role=role)
+
 
 @router.post("/logout",
   status_code=status.HTTP_200_OK,

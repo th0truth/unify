@@ -49,6 +49,7 @@ cloudinary.config(
   secure=True
 )
 
+
 @router.get("/my",
   status_code=status.HTTP_200_OK,
   response_model=List[SchedulePrivate],
@@ -110,9 +111,6 @@ async def get_current_user_schedule(
           status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
           detail="Internal server error."
         )
-      
-
-
     case "teachers":
       teacher = UserBase.model_validate(user)
       for group in await schedule_db.list_collection_names():
@@ -121,6 +119,7 @@ async def get_current_user_schedule(
         for lesson in schedule:
           lesson.update({"teacher": UserInitial.model_validate(teacher)})
       return schedule
+
 
 @router.get("/{group}",
   status_code=status.HTTP_200_OK,
@@ -138,6 +137,7 @@ async def get_schedule_by_group(
   collection = schedule_db.get_collection(group)
   schedule = await collection.find().to_list()
   return schedule
+
 
 @router.get("/{group}/{lesson_id}", 
   status_code=status.HTTP_200_OK,
@@ -166,6 +166,7 @@ async def get_schedule_by_id(
       detail="Lesson not found."
     )
   return schedule_lesson
+
 
 @router.post("",
   status_code=status.HTTP_201_CREATED,
@@ -213,6 +214,7 @@ async def create_schedule(
   )
 
   return schedule
+
 
 @router.post("/{group}/{lesson_id}/attach",
   status_code=status.HTTP_200_OK,
@@ -298,6 +300,7 @@ async def upload_schedule_files(
   
   return attachments
 
+
 @router.post("/{group}/{lesson_id}/detach/{file_id}",
   status_code=status.HTTP_200_OK)
 async def detach_schedule_file(
@@ -361,6 +364,7 @@ async def detach_schedule_file(
 
   return {"message": "The file has been successfully detached."}
 
+
 @router.put("/{group}/{lesson_id}",
   status_code=status.HTTP_200_OK)
 async def update_schedule(
@@ -400,6 +404,7 @@ async def update_schedule(
     )
   
   return {"message": "The lesson has been successfully updated."}
+
 
 @router.delete("/{group}/{lesson_id}",
   status_code=status.HTTP_200_OK,

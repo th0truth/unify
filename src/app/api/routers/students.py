@@ -61,6 +61,7 @@ async def create_student(
 
   return {"message": "The student account was created successfully."}
 
+
 @router.post("/{group}/all",
   status_code=status.HTTP_200_OK,
   response_model=List[StudentBase],
@@ -74,6 +75,7 @@ async def read_students(
   """
   users_db = mongo.get_database("users")
   return await UserCRUD(users_db).read_all("students", filter={"group.ua": group})
+
 
 @router.post("/my/grades",
   status_code=status.HTTP_200_OK)
@@ -92,6 +94,7 @@ async def get_current_student_grades(
   grades = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua, subject=grade_body.subject, date=date) 
   return grades
 
+
 @router.get("/my/grades/all",
   status_code=status.HTTP_200_OK)
 async def get_current_student_all_grades(
@@ -107,6 +110,7 @@ async def get_current_student_all_grades(
   grades_db = mongo.get_database("grades")
   grades = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua, date=date)
   return grades
+
 
 @router.post("/{edbo_id}/grades",
   status_code=status.HTTP_200_OK,
@@ -134,6 +138,7 @@ async def get_student_grades(
   grades = await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.ua, subject=grade_body.subject, date=date)
   return grades
 
+
 @router.get("/{edbo_id}/grades/all",
   status_code=status.HTTP_200_OK,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
@@ -157,6 +162,7 @@ async def get_student_all_grades(
   grades_db = mongo.get_database("grades")
   grades = await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.ua, date=date)
   return grades
+
 
 @router.get("/disciplines",
   status_code=status.HTTP_200_OK)

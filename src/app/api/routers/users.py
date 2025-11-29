@@ -67,6 +67,7 @@ async def read_user(
       detail="Internal server error."
     )
 
+
 @router.get("/{role}/all",
   status_code=status.HTTP_200_OK,
   response_model=List[UserBase],
@@ -80,6 +81,7 @@ async def read_users(
   """
   users_db = mongo.get_database("users")
   return await UserCRUD(users_db).read_all(role)
+
 
 @router.patch("/{role}",
   status_code=status.HTTP_200_OK,
@@ -101,6 +103,7 @@ async def update_all_users(
     )
   
   return {"message": "User accounts has been updated."}
+
 
 @router.patch("/{edbo_id}",
   status_code=status.HTTP_200_OK,
@@ -127,6 +130,7 @@ async def update_user(
   await redis.delete(f"cache:user:{edbo_id}:profile")
 
   return {"message": "The user account has been updated."}
+
 
 @router.delete("/{edbo_id}",
   status_code=status.HTTP_200_OK,
