@@ -5,6 +5,7 @@ import string
 import math
 
 from passlib.context import CryptContext
+from abc import ABC, abstractmethod
 from mailersend import emails
 from jinja2 import Template
 
@@ -25,6 +26,23 @@ class Hash:
     """Return bool type of the verified password."""
     return cls.context.verify(secret=plain, hash=hashed)
     
+
+class DBConnection(ABC):
+  """Abstract base class for DB instance client."""
+  
+  @classmethod
+  @abstractmethod
+  async def connect(cls):
+    """Establish instance connection."""
+    pass
+
+  @classmethod
+  @abstractmethod
+  async def close(cls):
+    """Close instance connection."""
+    pass
+
+
 def convert_size(size_bytes: bytes):
   if not bytes:
     return "0B"
@@ -34,12 +52,14 @@ def convert_size(size_bytes: bytes):
   s = round(size_bytes / p, 2)
   return "%s %s" % (s, size_name[i])
 
+
 def render_template(*, template_name: str, context: Dict[str, Any]) -> str:
   template_path = (
     Path(__file__).parent.parent / "templates" / template_name
   ).read_text()
   html_content = Template(template_path).render(context)
   return html_content
+
 
 def generate_verification_code(length: int = 6):
   # Define character pool
@@ -51,6 +71,7 @@ def generate_verification_code(length: int = 6):
 
   # Generate cryptographically secure code
   return "".join(secrets.choice(clean_chars) for _ in range(length))
+
 
 def send_email(to: str, subject: str, html_content: str, reply_to_name: str, **kwargs) -> str:
   # Define an empty dict to populate with mail values
