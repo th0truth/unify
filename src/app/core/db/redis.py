@@ -3,8 +3,9 @@ import redis.asyncio as aioredis
 
 from core.logger import logger
 from core.config import settings
+from core.security.utils import DBConnection 
 
-class RedisClient:
+class RedisClient(DBConnection):
   _instance: Optional["RedisClient"] = None
   _client: Optional[aioredis.Redis] = None
 
@@ -33,7 +34,7 @@ class RedisClient:
         alive = await cls._client.ping()
         if not alive:
           logger.error(f"Couldn't connect to Redis: {settings.REDIS_HOST}:{settings.REDIS_PORT}.")
-          return
+          raise
         
         logger.info("[+] Successfully connected to Redis.")
         return cls._client
@@ -44,15 +45,8 @@ class RedisClient:
         "detail": str(err),
         "cause": repr(err.__cause__)
       })
-      return
+      raise
   
-    except Exception as err:
-      logger.error({
-        "msg": "[x] Unexpected error while connecting to Redis.",
-        "detail": repr(err),
-      })
-      return
-
   @classmethod
   async def close(cls):
     """

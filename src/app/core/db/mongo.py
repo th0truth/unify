@@ -1,12 +1,16 @@
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase 
-from pymongo.errors import ConnectionFailure, AutoReconnect
+from pymongo.errors import (
+  ConnectionFailure,
+  OperationFailure,
+)
 from typing import Optional
 
 from core.logger import logger
 from core.config import settings
+from core.security.utils import DBConnection 
 
-class MongoClient:
+class MongoClient(DBConnection):
   _instance: Optional["MongoClient"] = None
   _client: Optional[AsyncMongoClient] = None
 
@@ -40,20 +44,14 @@ class MongoClient:
       await cls._client.admin.command("ping")
       logger.info("[+] Successfully connected to MongoDB.")
 
-    except AutoReconnect as err:
+    except (ConnectionFailure, OperationFailure) as err:
       logger.error({
-        "msg": "[x] MongoDB AutoReconnect triggered (likely DNS or network issue).",
-        "detail": str(err)
+        "msg": "[x] General connection error while connecting to MongoDB.",
+        "detail": str(err),
+        "cause": repr(err.__cause__)
       })
-      return
-
-    except Exception as err:
-      logger.error({
-        "msg": "[x] Unexpected erorr while connecting to MongoDB.",
-        "detail": err
-      })
-      return
-
+      raise
+    
   @classmethod
   async def close(cls):
     """
