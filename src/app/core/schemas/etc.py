@@ -3,6 +3,9 @@ from typing import Annotated, Optional, Dict, Any
 
 PASSWORDstr = Annotated[str, Field(..., min_length=8, max_length=128)]
 
+class HealthCheck(BaseModel):
+  status: str = "ok"
+
 class UpdatePassword(BaseModel):
   current_password:  PASSWORDstr
   new_password: PASSWORDstr

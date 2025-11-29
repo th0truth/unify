@@ -1,9 +1,11 @@
 from starlette.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 
 # Local Dependencies
+from core.logger import logger
 from core.config import settings
+from core.schemas.etc import HealthCheck
 from core.db import (
   MongoClient,
   RedisClient
@@ -16,11 +18,11 @@ async def lifespan(app: FastAPI):
   try:
     await RedisClient.connect()
     await MongoClient.connect()
+    logger.info("[+] The application has started successfully.")
     yield
-  finally:
+  finally:    
     await MongoClient.close()
     await RedisClient.close()
-
 
 # Initialize an app
 app = FastAPI(
@@ -31,6 +33,15 @@ app = FastAPI(
   openapi_url="/api/openapi.json",
   lifespan=lifespan
 )
+
+@app.get("/health",
+  tags=["Health Check"],
+  summary="Perform a Health Check",
+  response_description="Return HTTP Status Code 200 (OK)",
+  status_code=status.HTTP_200_OK,
+  response_model=HealthCheck)
+async def healt_check():
+  return HealthCheck(status="ok")
 
 # Set all CORS enabled origins
 if settings.all_cors_origins:
