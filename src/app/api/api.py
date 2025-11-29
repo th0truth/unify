@@ -1,20 +1,12 @@
 from fastapi import APIRouter
-from .routers import (
-    auth,
-    teachers,
-    user,
-    users,
-    groups,
-    students,
-    schedule,
-)
 
-api_router = APIRouter()
+from core.config import settings
 
-api_router.include_router(auth.router, prefix="/auth")
-api_router.include_router(user.router, prefix="/user")
-api_router.include_router(users.router, prefix="/users")
-api_router.include_router(groups.router, prefix="/groups")
-api_router.include_router(students.router, prefix="/students")
-api_router.include_router(teachers.router, prefix="/teachers")
-api_router.include_router(schedule.router, prefix="/schedule")
+# Import API routers
+from .v1 import api_v1_router
+
+# Initilize main router
+api_main_router = APIRouter()
+
+# Include API routers to the main router
+api_main_router.include_router(api_v1_router, prefix=settings.API_V1_STR)
