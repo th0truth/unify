@@ -207,6 +207,6 @@ async def get_student_disciplines(
         })
 
     # Store group disciplines in Redis cache
-    await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).total_seconds(), value=json.dumps(disciplines))
+    await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, value=json.dumps(disciplines))
 
     return disciplines

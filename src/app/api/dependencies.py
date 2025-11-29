@@ -76,7 +76,7 @@ async def get_current_user(
       )
   
     # Store user profile in Redis cache
-    await redis.setex(f"cache:user:{username}:profile", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).total_seconds(), json.dumps(user, default=str))
+    await redis.setex(f"cache:user:{username}:profile", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
   
   # Check a user's privileges 
   if security_scopes.scopes:
