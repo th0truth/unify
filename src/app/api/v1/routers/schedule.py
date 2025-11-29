@@ -100,13 +100,12 @@ async def get_current_user_schedule(
           lesson.update(SchedulePrivate.model_validate(updated_lesson).model_dump())
 
         # Store student schedule in Redis cache
-        await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(schedule))
+        await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).total_seconds(), json.dumps(schedule))
 
         return schedule
       
       except Exception as err:
         logger.error(err)
-        print(err)
         raise HTTPException(
           status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
           detail="Internal server error."

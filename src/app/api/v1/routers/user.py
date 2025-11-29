@@ -85,7 +85,7 @@ async def add_user_email(
 
   hash_key = f"session:code:{verification_code}"
   await redis.hset(hash_key, key=edbo_id, value=verification_code)
-  await redis.expire(hash_key, timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE).seconds)
+  await redis.expire(hash_key, timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE).total_seconds())
 
   # Render HTML template
   html_code = render_template(

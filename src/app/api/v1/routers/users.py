@@ -58,7 +58,7 @@ async def read_user(
       )
     
     # Store user data in Redis cache 
-    await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
+    await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).total_seconds(), json.dumps(user, default=str))
     return user
   except Exception as err:
     logger.error(err)
