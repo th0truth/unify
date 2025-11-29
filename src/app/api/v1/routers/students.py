@@ -12,11 +12,14 @@ from fastapi import (
 from datetime import timedelta
 import json
 
+from core.logger import logger
 from core.config import settings
 
+from core.schemas.user import UserInitial
 from core.schemas.student import StudentBase, StudentCreate
-from core.schemas.grade import GradeBase
+from core.schemas.grade import GradeBase, SetGrade, GradeGroup
 from core.schemas.teacher import TeacherBase
+
 from core.db import MongoClient
 from redis.asyncio import Redis
 from api.dependencies import (
@@ -28,7 +31,7 @@ from crud import BaseCRUD, UserCRUD, StudentCRUD
 
 router = APIRouter(tags=["Students"])
 
-@router.post("/",
+@router.post("",
   status_code=status.HTTP_201_CREATED,
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def create_student(
@@ -91,8 +94,7 @@ async def get_current_student_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  grades = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua, subject=grade_body.subject, date=date) 
-  return grades
+  return await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua, subject=grade_body.subject, date=date) 
 
 
 @router.get("/my/grades/all",
@@ -108,8 +110,7 @@ async def get_current_student_all_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  grades = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua, date=date)
-  return grades
+  return await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua, date=date)
 
 
 @router.post("/{edbo_id}/grades",
@@ -126,17 +127,10 @@ async def get_student_grades(
   Returns all grades for the specified student's subject.
   """
   users_db = mongo.get_database("users")
-  collection = users_db.get_collection("students")
-  if not (user := await collection.find_one({"edbo_id": edbo_id})):
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Student not found."
-    )
-  student = StudentBase.model_validate(user)
-  
+  student = await StudentCRUD(users_db)._fetch(edbo_id) 
+
   grades_db = mongo.get_database("grades")
-  grades = await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.ua, subject=grade_body.subject, date=date)
-  return grades
+  return await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.ua, subject=grade_body.subject, date=date)
 
 
 @router.get("/{edbo_id}/grades/all",
@@ -151,17 +145,96 @@ async def get_student_all_grades(
   Returns all grades for the student's subjects.
   """
   users_db = mongo.get_database("users")
-  collection = users_db.get_collection("students")
-  if not (user := await collection.find_one({"edbo_id": edbo_id})):
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Student not found."
-    )
-  student = StudentBase.model_validate(user)
+  student = await StudentCRUD(users_db)._fetch(edbo_id)
 
   grades_db = mongo.get_database("grades")
-  grades = await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.ua, date=date)
-  return grades
+  return await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.ua, date=date)
+
+
+@router.post("/assesment/{group}/all",
+  status_code=status.HTTP_200_OK,
+  response_model=List[GradeGroup])
+async def get_assesment_students(
+  group: Annotated[str, Path()],
+  discipline: Annotated[str, Body()],
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher", "admin"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Returns list of all students grades.
+  """
+  grades_db = mongo.get_database("grades")
+  if group not in await grades_db.list_collection_names():
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Group not found."
+    )
+
+  role = user.get("role")
+  match role:
+    case "teachers":
+      teacher = TeacherBase.model_validate(user)
+      if discipline not in teacher.disciplines:
+        raise HTTPException(
+          status_code=status.HTTP_403_FORBIDDEN,
+          detail="You don't have access to this discipline."
+        )
+    case _:
+      pass
+    
+  grades_docs = await BaseCRUD(grades_db).read_all(
+    collection=group,
+    filter={f"disciplines.{discipline}": {"$exists": True}},
+    projection={"edbo_id": 1, f"disciplines.{discipline}": 1}
+  )
+
+  users_db = mongo.get_database("users")
+  for grade_doc in grades_docs:
+    student = await UserCRUD(users_db).find(username=grade_doc.get("edbo_id"))
+    if student: grade_doc.update({"student": UserInitial.model_validate(student)}) 
+
+  return grades_docs
+
+
+@router.patch("/assessment/{edbo_id}",
+  status_code=status.HTTP_200_OK)
+async def student_assessment(
+  edbo_id: Annotated[int, Path()],
+  grade_body: Annotated[SetGrade, Body()],
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Assesses the student.
+  """
+  teacher = TeacherBase.model_validate(user)
+
+  users_db = mongo.get_database("users")
+  student = await StudentCRUD(users_db)._fetch(edbo_id) 
+
+  if grade_body.subject not in teacher.disciplines:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="You don't have access to this discipline."
+    )
+  
+  grades_db = mongo.get_database("grades")
+  collection = grades_db.get_collection(student.group.ua)
+
+  if not (await collection.find_one_and_update(
+    filter={"edbo_id": edbo_id},
+    update={"$set": {f"disciplines.{grade_body.subject}.{grade_body.date}": grade_body.grade}}
+  )):
+    await collection.insert_one(
+      {"edbo_id": edbo_id,
+       "disciplines": {
+         grade_body.subject: {
+           grade_body.date: grade_body.grade
+         }
+       }}
+    )
+    
+  return {"message": "Student successfully assessed."}
 
 
 @router.get("/disciplines",
@@ -181,12 +254,10 @@ async def get_student_disciplines(
   # Check if group disciplines exist in Redis cache
   if (disciplines_cache := await redis.get(redis_key)):
     try:
-      disciplines = json.loads(disciplines_cache)
-      return disciplines
-    except json.JSONDecodeError:
-      pass
-    
-  else:
+      return json.loads(disciplines_cache)
+    except json.JSONDecodeError as err:
+      logger.error({"message": "[x] Failed decode student's disciplines from Redis cache.", "detail": str(err)}, exc_info=True)
+
     disciplines = {}
     groups_db = mongo.get_database("groups")
     for degree in await groups_db.list_collection_names():
@@ -199,7 +270,6 @@ async def get_student_disciplines(
       )
     
     users_db = mongo.get_database("users")
-    # collection = users_db.get_collection("teachers")
     for subject, edbo_id in student_group.get("disciplines").items():
       if (teacher := await UserCRUD(users_db).find(username=edbo_id)):
         disciplines.update({
