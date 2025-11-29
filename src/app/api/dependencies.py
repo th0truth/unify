@@ -5,11 +5,17 @@ from redis.asyncio import Redis
 from datetime import timedelta
 import json
 
+from core.logger import logger
 from core.config import settings
 
 from core.security.jwt import OAuthJWTBearer
 from core.db import MongoClient, RedisClient
 from crud import UserCRUD
+
+# OAuth2 scheme for authentication
+oauth2_scheme = OAuth2PasswordBearer(
+  tokenUrl=f"{settings.API_V1_STR}/auth/login",
+)
 
 async def get_mongo_client() -> AsyncGenerator[MongoClient, None]:
   """Dependency to get MongoDB client."""
@@ -17,16 +23,13 @@ async def get_mongo_client() -> AsyncGenerator[MongoClient, None]:
     await MongoClient.connect()
   yield MongoClient._client
 
+
 async def get_redis_client() -> AsyncGenerator[RedisClient, None]:
   """Dependency to get Redis client."""
   if not RedisClient._client:
     await RedisClient.connect()
   yield RedisClient._client
 
-# OAuth2 scheme for authentication
-oauth2_scheme = OAuth2PasswordBearer(
-  tokenUrl=f"{settings.API_V1_STR}/auth/login",
-)
 
 async def get_current_user(
   token: Annotated[str, Depends(oauth2_scheme)],
@@ -52,16 +55,18 @@ async def get_current_user(
     )
 
   redis_key = f"cache:user:{username}:profile"
+  user = None
 
   # Check if user data exists in Redis cache
   if (user_cache := await redis.get(redis_key)):
     try:
       user = json.loads(user_cache)
-    except json.JSONDecodeError:
-      pass
-  
-  else:      
-    # Check if user exists in MongoDB
+    except json.JSONDecodeError as e:
+      logger.error({"message": "[x] An error occured while decoding user's data from Redis cache.", "detail": str(e)}, exc_info=True)
+      user = None
+
+  # If not in cache or cache failed, check MongoDB    
+  if user is None:
     users_db = mongo.get_database("users")
     if not (user := await UserCRUD(users_db).find(username=username, exclude=["_id", "password"])):
       raise HTTPException(
@@ -71,14 +76,15 @@ async def get_current_user(
       )
   
     # Store user profile in Redis cache
-    await redis.setex(f"cache:user:{username}:profile", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
+    await redis.setex(f"cache:user:{username}:profile", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).total_seconds(), json.dumps(user, default=str))
   
   # Check a user's privileges 
   if security_scopes.scopes:
-    for scope in user.get("scopes"):
-      if scope not in security_scopes.scopes:
-        raise HTTPException(
-          status_code=status.HTTP_404_NOT_FOUND,
-          detail="Not enough permissions."
-        )
+    user_scopes = user.get("scopes", [])
+    if not any(scope in security_scopes.scopes for scope in user_scopes):    
+      raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Not enough permissions."
+      )
+    
   return user
