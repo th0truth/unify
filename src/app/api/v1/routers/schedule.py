@@ -51,6 +51,7 @@ cloudinary.config(
 
 @router.post("",
   status_code=status.HTTP_201_CREATED,
+  operation_id="createSchedule",
   response_model=ScheduleBase)
 async def create_schedule(
 
@@ -104,6 +105,7 @@ async def create_schedule(
 
 @router.get("/my",
   status_code=status.HTTP_200_OK,
+  operation_id="getMySchedule",
   response_model=List[SchedulePrivate],
   response_model_exclude_none=True)
 async def get_current_user_schedule(
@@ -181,6 +183,7 @@ async def get_current_user_schedule(
 
 @router.get("/{group}",
   status_code=status.HTTP_200_OK,
+  operation_id="getScheduleByGroup",
   response_model=List[SchedulePrivate],
   response_model_exclude_none=True,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
@@ -199,6 +202,7 @@ async def get_schedule_by_group(
 
 @router.get("/{group}/{lesson_id}", 
   status_code=status.HTTP_200_OK,
+  operation_id="getScheduleById",
   response_model=SchedulePrivate,
   response_model_exclude_none=True,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
@@ -226,8 +230,9 @@ async def get_schedule_by_id(
   return schedule_lesson
 
 
-@router.post("/{group}/{lesson_id}/attach",
+@router.post("/{group}/{lesson_id}/attachment",
   status_code=status.HTTP_200_OK,
+  operation_id="attachScheduleFiles",
   response_model=List[MetaFile],
   response_model_exclude_none=True)
 async def upload_schedule_files(
@@ -311,8 +316,9 @@ async def upload_schedule_files(
   return attachments
 
 
-@router.post("/{group}/{lesson_id}/detach/{file_id}",
-  status_code=status.HTTP_200_OK)
+@router.post("/{group}/{lesson_id}/attachment/{file_id}",
+  status_code=status.HTTP_200_OK,
+  operation_id="detachScheduleFile")
 async def detach_schedule_file(
   group: Annotated[str, Path()],
   lesson_id: Annotated[str, Path()],
@@ -376,7 +382,8 @@ async def detach_schedule_file(
 
 
 @router.put("/{group}/{lesson_id}",
-  status_code=status.HTTP_200_OK)
+  status_code=status.HTTP_200_OK,
+  operation_id="updateSchedule")
 async def update_schedule(
   group: Annotated[str, Path()],
   lesson_id: Annotated[str, Path()],
@@ -418,6 +425,7 @@ async def update_schedule(
 
 @router.delete("/{group}/{lesson_id}",
   status_code=status.HTTP_200_OK,
+  operation_id="deleteSchedule",
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def delete_schedule(
   group: Annotated[str, Path()],
