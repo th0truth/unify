@@ -151,7 +151,7 @@ async def get_student_all_grades(
   return await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.ua, date=date)
 
 
-@router.post("/assesment/{group}/all",
+@router.post("/{group}/assesment/all",
   status_code=status.HTTP_200_OK,
   response_model=List[GradeGroup])
 async def get_assesment_students(
@@ -184,8 +184,7 @@ async def get_assesment_students(
     
   grades_docs = await BaseCRUD(grades_db).read_all(
     collection=group,
-    filter={f"disciplines.{discipline}": {"$exists": True}},
-    projection={"edbo_id": 1, f"disciplines.{discipline}": 1}
+    filter={f"disciplines.{discipline}": {"$exists": True}}
   )
 
   users_db = mongo.get_database("users")
@@ -196,8 +195,8 @@ async def get_assesment_students(
   return grades_docs
 
 
-@router.patch("/assessment/{edbo_id}",
-  status_code=status.HTTP_200_OK)
+@router.patch("/{edbo_id}/assessment",
+  status_code=status.HTTP_201_CREATED)
 async def student_assessment(
   edbo_id: Annotated[int, Path()],
   grade_body: Annotated[SetGrade, Body()],
@@ -223,7 +222,9 @@ async def student_assessment(
 
   if not (await collection.find_one_and_update(
     filter={"edbo_id": edbo_id},
-    update={"$set": {f"disciplines.{grade_body.subject}.{grade_body.date}": grade_body.grade}}
+    update={
+      "$set": {f"disciplines.{grade_body.subject}.{grade_body.date}": grade_body.grade},
+      "$addToSet": {f"grade_systems.{grade_body.grade_system}": grade_body.subject}}
   )):
     await collection.insert_one(
       {"edbo_id": edbo_id,
@@ -249,7 +250,7 @@ async def get_student_disciplines(
   """
   student = StudentBase.model_validate(user)
 
-  redis_key = f"cache:group:{student.group.ua}:disciplines"
+  redis_key = f"cache:groups:{student.group.en}:disciplines"
 
   # Check if group disciplines exist in Redis cache
   if (disciplines_cache := await redis.get(redis_key)):
