@@ -49,6 +49,58 @@ cloudinary.config(
   secure=True
 )
 
+@router.post("",
+  status_code=status.HTTP_201_CREATED,
+  response_model=ScheduleBase)
+async def create_schedule(
+
+  schedule: Annotated[ScheduleCreate, Body()],
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
+  redis: Annotated[Redis, Depends(get_redis_client)]
+):
+  """
+  Creates a schedule.
+  """
+  teacher = TeacherBase.model_validate(user)
+
+  # Check if the teacher's subject is matches the discipline.
+  if schedule.subject not in teacher.disciplines:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="You don't have access to this discipline."
+    )
+
+  # Find out the specified group.
+  groups_db = mongo.get_database("groups")
+  for degree in await groups_db.list_collection_names():
+    collection = groups_db.get_collection(degree)
+    if (group := await collection.find_one({"group.ua": schedule.group.ua})):
+      break
+  if not group:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Given group not found."
+    )
+
+  schedule_private = SchedulePrivate(
+    **schedule.model_dump(),
+    teacher_edbo=teacher.edbo_id,
+    lesson_id=str(uuid.uuid4().hex)
+  )
+
+  # Insert the schedule to the MongoDB database
+  schedule_db = mongo.get_database("schedule")
+  collection = schedule_db.get_collection(schedule.group.ua)
+  await collection.insert_one(
+    schedule_private.model_dump(exclude_none=True)
+  )
+
+  await redis.delete(f"cache:groups:{schedule.group.en}:schedule")
+  await redis.delete(f"cache:user:{teacher.edbo_id}:schedule")
+
+  return schedule
+
 
 @router.get("/my",
   status_code=status.HTTP_200_OK,
@@ -68,7 +120,7 @@ async def get_current_user_schedule(
     case "students":
       student = StudentBase.model_validate(user) 
  
-      redis_key = f"cache:group:{student.group.ua}:schedule"
+      redis_key = f"cache:groups:{student.group.en}:schedule"
 
       try:
         # Check if student schedule exits in Redis cache
@@ -93,28 +145,37 @@ async def get_current_user_schedule(
           updated_lesson = {
             **lesson,
             "teacher": UserInitial.model_validate(teacher),
-            "grade": grades_doc.get(lesson["subject"], {}).get(lesson["date"])
+            "grade": grades_doc.get(lesson.get("subject"), {}).get(lesson["date"]),
           }
           lesson.clear()
           lesson.update(SchedulePrivate.model_validate(updated_lesson).model_dump())
 
         # Store student schedule in Redis cache
-        await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(schedule))
+        await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(schedule, default=str))
+        
         return schedule
       
       except Exception as err:
-        logger.error(err)
+        logger.error({"detail": str(err)}, exc_info=True)
         raise HTTPException(
           status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
           detail="Internal server error."
         )
     case "teachers":
       teacher = UserBase.model_validate(user)
+
+      redis_key = f"cache:user:{teacher.edbo_id}:schedule"
+
       for group in await schedule_db.list_collection_names():
         collection = schedule_db.get_collection(group)
         schedule = await collection.find({"teacher_edbo": teacher.edbo_id}).to_list()
         for lesson in schedule:
           lesson.update({"teacher": UserInitial.model_validate(teacher)})
+
+
+      # Store student schedule in Redis cache
+      await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(schedule, default=str))
+      
       return schedule
 
 
@@ -163,54 +224,6 @@ async def get_schedule_by_id(
       detail="Lesson not found."
     )
   return schedule_lesson
-
-
-@router.post("",
-  status_code=status.HTTP_201_CREATED,
-  response_model=ScheduleBase)
-async def create_schedule(
-  schedule: Annotated[ScheduleCreate, Body()],
-  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
-):
-  """
-  Creates a schedule.
-  """
-  teacher = TeacherBase.model_validate(user)
-
-  # Check if the teacher's subject is matches the discipline.
-  if schedule.subject not in teacher.disciplines:
-    raise HTTPException(
-      status_code=status.HTTP_403_FORBIDDEN,
-      detail="You don't have access to this discipline."
-    )
-
-  # Find out the specified group.
-  groups_db = mongo.get_database("groups")
-  for degree in await groups_db.list_collection_names():
-    collection = groups_db.get_collection(degree)
-    if (group := await collection.find_one({"group.ua": schedule.group.ua})):
-      break
-  if not group:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Given group not found."
-    )
-
-  schedule_private = SchedulePrivate(
-    **schedule.model_dump(),
-    teacher_edbo=teacher.edbo_id,
-    lesson_id=str(uuid.uuid4().hex)
-  )
-
-  # Insert the schedule to the MongoDB database
-  schedule_db = mongo.get_database("schedule")
-  collection = schedule_db.get_collection(schedule.group.ua)
-  await collection.insert_one(
-    schedule_private.model_dump(exclude_none=True)
-  )
-
-  return schedule
 
 
 @router.post("/{group}/{lesson_id}/attach",

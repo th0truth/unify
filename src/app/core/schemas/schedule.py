@@ -1,14 +1,20 @@
 from typing import Optional, List
+from datetime import datetime
 from pydantic import BaseModel
 
 from .user import UserInitial
 from .group import LocalizedGroup
 from .etc import MetaFile
 
+class ScheduleDate(BaseModel):
+  startAt: datetime
+  endAt: datetime
+
 class ScheduleBase(BaseModel):
   subject: str
   position: int
   classroom: int
+  event: ScheduleDate
   date: str
   topic: str
   homework: str
