@@ -84,7 +84,7 @@ async def get_assigned_disiciplines(
 
 @router.get("/assigned/groups",
   status_code=status.HTTP_200_OK,
-  openapi_extra="getAssignedGroups",
+  operation_id="getAssignedGroups",
   response_model=Dict[str, List[TeacherGroup]])
 async def get_assigned_groups(
   user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],

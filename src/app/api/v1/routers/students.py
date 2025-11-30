@@ -204,7 +204,7 @@ async def get_assesment_students(
 
 @router.patch("/{edbo_id}/assessment",
   status_code=status.HTTP_201_CREATED,
-  openapi_extra="assessStudent")
+  operation_id="assessStudent")
 async def student_assessment(
   edbo_id: Annotated[int, Path()],
   grade_body: Annotated[SetGrade, Body()],
