@@ -19,7 +19,7 @@ from crud import UserCRUD, BaseCRUD
 
 router = APIRouter(tags=["Teachers"])
 
-@router.post("/",
+@router.post("",
   status_code=status.HTTP_201_CREATED,
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def create_teacher(
@@ -43,7 +43,7 @@ async def create_teacher(
   return {"message": "The teacher account was created successfully."}
 
 
-@router.get("/assigned/{group}/disciplines",
+@router.get("/assigned/groups/{group}/disciplines",
   response_model=List,
   status_code=status.HTTP_200_OK)
 async def get_assigned_disicplines(
