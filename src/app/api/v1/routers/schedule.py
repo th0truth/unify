@@ -74,11 +74,10 @@ async def get_current_user_schedule(
         # Check if student schedule exits in Redis cache
         if (schedule_cache := await redis.get(redis_key)):
           try:
-            schedule = json.loads(schedule_cache)
-            return schedule
+            return json.loads(schedule_cache)
           except json.JSONDecodeError:
-            pass
-
+            logger.error({"message": "[x] Failed decode schedule from Redis cache.", "detail": str(err)}, exc_info=True)
+      
         # Find schedule in MongoDB
         collection = schedule_db.get_collection(student.group.ua)
         schedule = await collection.find().to_list()
@@ -101,7 +100,6 @@ async def get_current_user_schedule(
 
         # Store student schedule in Redis cache
         await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(schedule))
-
         return schedule
       
       except Exception as err:
