@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from pymongo.asynchronous.database import AsyncDatabase 
 from core.config import ModelType
@@ -11,9 +11,13 @@ class BaseCRUD:
     """Creates an object."""
     await self.db[collection].insert_one(model.model_dump())
 
-  async def read(self, collection: str, filter: Any):
+  async def read(self, collection: str, filter: Any, exclude: Optional[list] = None) -> Union[dict, None]:
     """Reads specific object."""
-    return await self.db[collection].find_one(filter)
+    result = await self.db[collection].find_one(filter)
+    if result and exclude:
+      for key in exclude:
+        result.pop(key)
+    return result
 
   async def read_all(self, collection: str, *, filter: Any = {}, offset: int = 0, length: Optional[int] = None):    
     """Reads all objects."""

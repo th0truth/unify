@@ -35,5 +35,6 @@ class SchedulePrivate(ScheduleCreate):
   teacher: Optional[UserInitial] = None
   teacher_edbo: Optional[int] = None
   grade: Optional[int] = None
+  grade_system: Optional[str] = None
   attachments: Optional[List[MetaFile]] = None
   lesson_id: str

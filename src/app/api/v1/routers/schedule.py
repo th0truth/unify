@@ -38,7 +38,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
-from crud import StudentCRUD
+from crud import StudentCRUD, GradeCRUD
 
 router = APIRouter(tags=["Schedule"])
 
@@ -139,15 +139,17 @@ async def get_current_user_schedule(
         # Get grades
         grades_db = mongo.get_database("grades")
         grades_doc = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua)
-        
+
+        lesson: dict
         users_db = mongo.get_database("users")
-        collection = users_db.get_collection("teachers")
         for lesson in schedule:
-          teacher = await collection.find_one({"edbo_id": lesson.pop("teacher_edbo")})
+          teacher = await users_db["teachers"].find_one({"edbo_id": lesson.pop("teacher_edbo")})
           updated_lesson = {
             **lesson,
             "teacher": UserInitial.model_validate(teacher),
-            "grade": grades_doc.get(lesson.get("subject"), {}).get(lesson["date"]),
+            "grade": grades_doc.get(lesson.get("subject"), {}).get(lesson.get("date")),
+            "grade_system": await GradeCRUD.get_grade_system(
+              (await GradeCRUD(grades_db).read(student.group.ua, filter={"edbo_id": student.edbo_id}, exclude=["_id"])).get("grade_systems"), lesson.get("subject"))
           }
           lesson.clear()
           lesson.update(SchedulePrivate.model_validate(updated_lesson).model_dump())
