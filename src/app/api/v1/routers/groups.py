@@ -32,6 +32,40 @@ async def get_detail_disciplines(mongo: MongoClient, *, group: dict) -> dict:
   return group
 
 
+@router.post("",
+  status_code=status.HTTP_201_CREATED,
+  response_model=GroupCreate,
+  dependencies=[Security(get_current_user, scopes=["admin"])])
+async def create_group(
+  create_group: Annotated[GroupCreate, Body()],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Creates the student group.
+  """
+  groups_db = mongo.get_database("groups")
+  collections = await groups_db.list_collection_names()
+  if create_group.degree not in collections:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Group degree not found."
+    )
+  
+  for degree in collections:
+    collection = groups_db.get_collection(degree)
+    if await collection.find_one({"group.ua": create_group.group.ua}):
+      raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="Group already exits."
+      )
+  
+  await collection.insert_one(
+    create_group.model_dump()
+  )
+  
+  return create_group
+
+
 @router.get("/my",
   status_code=status.HTTP_200_OK,
   response_model=GroupBase)
@@ -113,40 +147,6 @@ async def get_group(
   
   student_group = await get_detail_disciplines(mongo, group=student_group)
   return student_group
-
-
-@router.post("/",
-  status_code=status.HTTP_201_CREATED,
-  response_model=GroupCreate,
-  dependencies=[Security(get_current_user, scopes=["admin"])])
-async def create_group(
-  create_group: Annotated[GroupCreate, Body()],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
-):
-  """
-  Creates the student group.
-  """
-  groups_db = mongo.get_database("groups")
-  collections = await groups_db.list_collection_names()
-  if create_group.degree not in collections:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Group degree not found."
-    )
-  
-  for degree in collections:
-    collection = groups_db.get_collection(degree)
-    if await collection.find_one({"group.ua": create_group.group.ua}):
-      raise HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail="Group already exits."
-      )
-  
-  await collection.insert_one(
-    create_group.model_dump()
-  )
-  
-  return create_group
  
 
 @router.delete("/{group}",
