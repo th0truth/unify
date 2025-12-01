@@ -203,7 +203,7 @@ async def get_schedule_by_group(
 
 @router.get("/{group}/{lesson_id}/details", 
   status_code=status.HTTP_200_OK,
-  operation_id="ReadScheduleById",
+  operation_id="ReadScheduleLessonById",
   response_model=SchedulePrivate,
   response_model_exclude_none=True,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
@@ -230,10 +230,10 @@ async def get_schedule_by_id(
   return schedule_lesson
 
 
-@router.put("/{group}/{lesson_id}",
+@router.put("/{group}/{lesson_id}/revision",
   status_code=status.HTTP_200_OK,
-  operation_id="UpdateSchedule")
-async def update_schedule(
+  operation_id="UpdateScheduleLesson")
+async def update_schedule_lesson(
   group: Annotated[str, Path()],
   lesson_id: Annotated[str, Path()],
   schedule_update: Annotated[ScheduleUpdate, Body()],
@@ -273,9 +273,9 @@ async def update_schedule(
 
 @router.delete("/{group}/{lesson_id}",
   status_code=status.HTTP_204_NO_CONTENT,
-  operation_id="deleteSchedule",
+  operation_id="DeleteScheduleLessonById",
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
-async def delete_schedule(
+async def delete_schedule_lesson(
   group: Annotated[str, Path()],
   lesson_id: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
