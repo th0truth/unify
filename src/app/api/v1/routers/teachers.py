@@ -59,7 +59,7 @@ async def get_assigned_disiciplines(
   teacher = TeacherBase.model_validate(user)
 
   query = {"$or": [
-    {"group.ua": {"$regex": group, "$options": "i"}},
+    {"group.en": {"$regex": group, "$options": "i"}},
     {"group.ua": {"$regex": group, "$options": "i"}}
   ]}
   groups_db = mongo.get_database("groups")  

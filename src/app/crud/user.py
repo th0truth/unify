@@ -12,8 +12,8 @@ class UserCRUD(BaseCRUD):
   async def find(self, *, username: str, exclude: Optional[List] = None) -> Union[dict, None]:
     """Fetches user profile using username."""
     try:
-      for collection in await self.db.list_collection_names():
-        if (user := await self.db[collection].find_one(
+      for roles in await self.db.list_collection_names():
+        if (user := await self.db[roles].find_one(
           {"edbo_id": int(username)}if isinstance(username, int) or username.isdigit() else {"email.address": username})
         ):
           break

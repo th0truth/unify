@@ -44,7 +44,12 @@ async def create_student(
   """
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
-    if (group := await groups_db[degree].find_one({"group.ua": create_student.group.ua})):
+    if (group := await groups_db[degree].find_one(
+      {"$or": [
+        {"group.en": create_student.group.en},
+        {"group.ua": create_student.group.ua}
+      ]}
+    )):
       break
   if not group:
     raise HTTPException(
@@ -79,7 +84,12 @@ async def get_students_by_group(
   Returns a list of all existing students from the given group.
   """
   users_db = mongo.get_database("users")
-  return await UserCRUD(users_db).read_all("students", filter={"group.ua": group})
+  return await UserCRUD(users_db).read_all("students", filter={
+    "$or": [
+      {"group.en": group},
+      {"group.ua": group}
+    ]
+  })
 
 
 @router.post("/my/grades",
@@ -97,7 +107,7 @@ async def get_current_student_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  return await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua, subject=grade_body.subject, date=date) 
+  return await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.en, subject=grade_body.subject, date=date) 
 
 
 @router.get("/my/grades/all",
@@ -114,7 +124,7 @@ async def get_current_student_all_grades(
   student = StudentBase.model_validate(user)
 
   grades_db = mongo.get_database("grades")
-  return await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua, date=date)
+  return await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.en, date=date)
 
 
 @router.post("/{edbo_id}/grades",
@@ -135,7 +145,7 @@ async def get_student_grades_by_subject(
   student = await StudentCRUD(users_db)._fetch(edbo_id) 
 
   grades_db = mongo.get_database("grades")
-  return await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.ua, subject=grade_body.subject, date=date)
+  return await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.en, subject=grade_body.subject, date=date)
 
 
 @router.get("/{edbo_id}/grades/all",
@@ -154,7 +164,7 @@ async def get_student_all_grades(
   student = await StudentCRUD(users_db)._fetch(edbo_id)
 
   grades_db = mongo.get_database("grades")
-  return await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.ua, date=date)
+  return await StudentCRUD(grades_db).get_grades(edbo_id=edbo_id, group=student.group.en, date=date)
 
 
 @router.post("/{group}/assesment/all",
@@ -226,7 +236,7 @@ async def student_assessment(
     )
   
   grades_db = mongo.get_database("grades")
-  collection = grades_db.get_collection(student.group.ua)
+  collection = grades_db.get_collection(student.group.en)
 
   if not (await collection.find_one_and_update(
     filter={"edbo_id": edbo_id},
@@ -271,7 +281,12 @@ async def get_student_disciplines(
     disciplines = {}
     groups_db = mongo.get_database("groups")
     for degree in await groups_db.list_collection_names():
-      if (student_group := await BaseCRUD(groups_db).read(degree, filter={"group.ua": student.group.ua})):
+      if (student_group := await BaseCRUD(groups_db).read(degree, filter={
+        "$or": [
+          {"group.en": student.group.en},
+          {"group.ua": student.group.ua}
+        ]
+      })):
         break
     if not student_group:
       raise HTTPException(

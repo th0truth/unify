@@ -54,7 +54,6 @@ cloudinary.config(
   operation_id="createSchedule",
   response_model=ScheduleBase)
 async def create_schedule(
-
   schedule: Annotated[ScheduleCreate, Body()],
   user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -75,8 +74,12 @@ async def create_schedule(
   # Find out the specified group.
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
-    collection = groups_db.get_collection(degree)
-    if (group := await collection.find_one({"group.ua": schedule.group.ua})):
+    if (group := await groups_db[degree].find_one(
+      {"$or": [
+        {"group.en": schedule.group.en},
+        {"group.ua": schedule.group.ua}
+      ]}
+    )):
       break
   if not group:
     raise HTTPException(
@@ -92,8 +95,7 @@ async def create_schedule(
 
   # Insert the schedule to the MongoDB database
   schedule_db = mongo.get_database("schedule")
-  collection = schedule_db.get_collection(schedule.group.ua)
-  await collection.insert_one(
+  await schedule_db[schedule.group.en].insert_one(
     schedule_private.model_dump(exclude_none=True)
   )
 
@@ -133,12 +135,11 @@ async def get_current_user_schedule(
             logger.error({"message": "[x] Failed decode schedule from Redis cache.", "detail": str(err)}, exc_info=True)
       
         # Find schedule in MongoDB
-        collection = schedule_db.get_collection(student.group.ua)
-        schedule = await collection.find().to_list()
+        schedule = await schedule_db[student.group.en].find().to_list()
 
         # Get grades
         grades_db = mongo.get_database("grades")
-        grades_doc = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.ua)
+        grades_doc = await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.en)
 
         lesson: dict
         users_db = mongo.get_database("users")
@@ -149,7 +150,7 @@ async def get_current_user_schedule(
             "teacher": UserInitial.model_validate(teacher),
             "grade": grades_doc.get(lesson.get("subject"), {}).get(lesson.get("date")),
             "grade_system": await GradeCRUD.get_grade_system(
-              (await GradeCRUD(grades_db).read(student.group.ua, filter={"edbo_id": student.edbo_id}, exclude=["_id"])).get("grade_systems"), lesson.get("subject"))
+              (await GradeCRUD(grades_db).read(student.group.en, filter={"edbo_id": student.edbo_id}, exclude=["_id"])).get("grade_systems"), lesson.get("subject"))
           }
           lesson.clear()
           lesson.update(SchedulePrivate.model_validate(updated_lesson).model_dump())
@@ -171,8 +172,7 @@ async def get_current_user_schedule(
       redis_key = f"cache:user:{teacher.edbo_id}:schedule"
 
       for group in await schedule_db.list_collection_names():
-        collection = schedule_db.get_collection(group)
-        schedule = await collection.find({"teacher_edbo": teacher.edbo_id}).to_list()
+        schedule = await schedule_db[group].find({"teacher_edbo": teacher.edbo_id}).to_list()
         for lesson in schedule:
           lesson.update({"teacher": UserInitial.model_validate(teacher)})
 
@@ -197,8 +197,7 @@ async def get_schedule_by_group(
   Returns the schedule with the given `group`. 
   """
   schedule_db = mongo.get_database("schedule")
-  collection = schedule_db.get_collection(group)
-  schedule = await collection.find().to_list()
+  schedule = await schedule_db[group].find().to_list()
   return schedule
 
 
@@ -217,14 +216,13 @@ async def get_schedule_by_id(
   Returns the schedule with the given `lesson_id`.
   """
   schedule_db = mongo.get_database("schedule")
-  collection = schedule_db.get_collection(group)
   if group not in await schedule_db.list_collection_names():
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Given group not found."
     )
 
-  if not (schedule_lesson := await collection.find_one({"lesson_id": lesson_id})):
+  if not (schedule_lesson := await schedule_db[group].find_one({"lesson_id": lesson_id})):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Lesson not found."
@@ -256,8 +254,7 @@ async def upload_schedule_files(
       detail="Group not found."
     )
   
-  collection = schedule_db.get_collection(group)
-  if not (lesson := await collection.find_one(
+  if not (lesson := await schedule_db[group].find_one(
     filter={"teacher_edbo": teacher.edbo_id, "lesson_id": lesson_id})):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
@@ -306,7 +303,7 @@ async def upload_schedule_files(
         detail=f"Error attaching files."
       )
   
-  if not (await collection.update_one(
+  if not (await schedule_db[group].update_one(
     filter=lesson,
     update={"$push": {"attachments": {"$each": attachments}}})
   ):
@@ -340,8 +337,7 @@ async def detach_schedule_file(
       detail="Group not found."
     )
   
-  collection = schedule_db.get_collection(group)
-  if not (schedule_lesson := await collection.find_one(
+  if not (schedule_lesson := await schedule_db[group].find_one(
     filter={
       "teacher_edbo": teacher.edbo_id,
       "lesson_id": lesson_id,
@@ -349,7 +345,7 @@ async def detach_schedule_file(
     })):
       raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail="Not found."
+        detail="Lesson not found."
       ) 
   for attachment in schedule_lesson["attachments"]:
     if (file_id == attachment["file_id"]):
@@ -375,7 +371,7 @@ async def detach_schedule_file(
       detail="File not found in the cloud."
     )  
 
-  await collection.update_one(
+  await schedule_db[group].update_one(
     filter=schedule_lesson,
     update={"$pull": {"attachments": {"file_id": file_id}}}
   )
@@ -411,15 +407,14 @@ async def update_schedule(
       detail="Given group not found."
     )
 
-  collection = schedule_db.get_collection(group)
-  lesson = await collection.find_one_and_update(
+  lesson = await schedule_db[group].find_one_and_update(
     filter={"lesson_id": lesson_id},
     update={"$set": schedule_update.model_dump(exclude_unset=True)}
   )
   if not lesson:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
-      detail="The lesson not found."
+      detail="Lesson not found."
     )
   
   return {"message": "The lesson has been successfully updated."}
@@ -446,8 +441,7 @@ async def delete_schedule(
       detail="Given group not found."
     )
 
-  collection = schedule_db.get_collection(group)
-  if not await collection.find_one_and_delete({"lesson_id": lesson_id}):
+  if not await schedule_db[group].find_one_and_delete({"lesson_id": lesson_id}):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Lesson not found."

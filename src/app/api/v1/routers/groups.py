@@ -22,11 +22,10 @@ router = APIRouter(tags=["Groups"])
 
 async def get_detail_disciplines(mongo: MongoClient, *, group: dict) -> dict:
   users_db = mongo.get_database("users")
-  collection = users_db.get_collection("teachers")
   group.update(
     {"disciplines": [{
       discipline: UserBase.model_validate(
-        await collection.find_one({"edbo_id": edbo_id}))} for discipline, edbo_id in group["disciplines"].items()]
+        await users_db["teachers"].find_one({"edbo_id": edbo_id}))} for discipline, edbo_id in group["disciplines"].items()]
     }
   )
   return group
@@ -38,29 +37,33 @@ async def get_detail_disciplines(mongo: MongoClient, *, group: dict) -> dict:
   response_model=GroupCreate,
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def create_group(
-  create_group: Annotated[GroupCreate, Body()],
+  group_data: Annotated[GroupCreate, Body()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
   """
   Creates the student group.
   """
   groups_db = mongo.get_database("groups")
-  collections = await groups_db.list_collection_names()
-  if create_group.degree not in collections:
+  degrees = await groups_db.list_collection_names()
+  if group_data.degree not in degrees:
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Group degree not found."
     )
   
-  for degree in collections:
-    collection = groups_db.get_collection(degree)
-    if await collection.find_one({"group.ua": create_group.group.ua}):
+  for degree in degrees:
+    if await groups_db[degree].find_one(
+      {"$or": [
+        {"group.en": group_data.group.en},
+        {"group.ua": group_data.group.ua}
+      ]}
+    ):
       raise HTTPException(
         status_code=status.HTTP_409_CONFLICT,
         detail="Group already exits."
       )
   
-  await collection.insert_one(
+  await groups_db[degree].insert_one(
     create_group.model_dump()
   )
   
@@ -84,15 +87,18 @@ async def get_current_user_group(
     case "students":
       student = StudentBase.model_validate(user)
       for degree in await groups_db.list_collection_names():
-        collection = groups_db.get_collection(degree)
-        if (group := await collection.find_one({"group.ua": student.group.ua})):
+        if (group := await groups_db[degree].find_one(
+          {"$or": [
+            {"group.en": student.group.en},
+            {"group.ua": student.group.ua}
+          ]}
+        )):
           break
 
     case "teachers":
       teacher = TeacherBase.model_validate(user)
       for degree in await groups_db.list_collection_names():
-        collection = groups_db.get_collection(degree)
-        if (group := await collection.find_one({"class_teacher_edbo": teacher.edbo_id})):
+        if (group := await groups_db[degree].find_one({"class_teacher_edbo": teacher.edbo_id})):
           break
 
   if not group:
@@ -120,8 +126,7 @@ async def get_groups(
   groups = {}
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
-    collection = groups_db.get_collection(degree)
-    group_list = await collection.find().to_list()
+    group_list = await groups_db[degree].find().to_list()
     groups.update({degree: group_list})
   
   return groups
@@ -140,8 +145,12 @@ async def get_group(
   """
   groups_db = mongo.get_database("groups")
   for degree in await groups_db.list_collection_names():
-    collection = groups_db.get_collection(degree)
-    if (student_group := await collection.find_one({"group.ua": group})):
+    if (student_group := await groups_db[degree].find_one(
+      {"$or": [
+        {"group.en": group},
+        {"group.ua": group}
+      ]}
+    )):
       break
   if not student_group:
     raise HTTPException(
@@ -165,8 +174,12 @@ async def delete_group(
   """
   groups_db = mongo.get_database("groups") 
   for degree in await groups_db.list_collection_names():
-    collection = groups_db.get_collection(degree)
-    if (student_group := await collection.find_one({"group.ua": group})):
+    if (student_group := await groups_db[degree].find_one(
+      {"$or": [
+        {"group.en": group},
+        {"group.ua": group}
+      ]}
+    )):
       break
   if not student_group:
     raise HTTPException(
@@ -174,6 +187,6 @@ async def delete_group(
       detail="Group not found."
     )
   
-  await collection.delete_one(student_group)
+  await groups_db[degree].delete_one(student_group)
 
   return {"message": "The group has been deleted."}
