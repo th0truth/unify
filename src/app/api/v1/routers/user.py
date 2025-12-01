@@ -144,7 +144,7 @@ async def update_password_me(
   return {"message": "The password was updated."}
 
 
-@router.patch("/password-recovery",
+@router.patch("/recovery",
   operation_id="RecoverUserPassword",
   status_code=status.HTTP_200_OK)
 async def password_recovery(
