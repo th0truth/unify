@@ -2,6 +2,7 @@ from fastapi import status, HTTPException
 from core.schemas.student import StudentBase
 
 from .base import BaseCRUD
+from .grade import GradeCRUD
 
 class StudentCRUD(BaseCRUD):
   def __init__(self, db):
@@ -25,5 +26,8 @@ class StudentCRUD(BaseCRUD):
     if subject: return disciplines.get(subject, {})
     result = {}
     for subject, records in disciplines.items():
-      result[subject] = records.get(date) if date else records
+      result[subject] = {
+        "grades": records.get(date) if date else records,
+        "grade_system": await GradeCRUD.get_grade_system(grades_doc.get("grade_systems"), subject)
+      }
     return result

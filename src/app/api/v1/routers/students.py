@@ -94,7 +94,8 @@ async def get_students_by_group(
 
 @router.post("/me/grades",
   status_code=status.HTTP_200_OK,
-  operation_id="ReadCurrentUserGrades")
+  operation_id="ReadCurrentUserGrades",
+  response_model_exclude_none=True)
 async def get_current_student_grades(
   grade_body: Annotated[GradeBase, Body()],
   user: Annotated[dict, Security(get_current_user, scopes=["student"])],
