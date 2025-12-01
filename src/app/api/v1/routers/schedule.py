@@ -105,7 +105,7 @@ async def create_schedule(
   return schedule
 
 
-@router.get("/my",
+@router.get("/me",
   status_code=status.HTTP_200_OK,
   operation_id="ReadCurrentUserSchedule",
   response_model=List[SchedulePrivate],
@@ -201,7 +201,7 @@ async def get_schedule_by_group(
   return schedule
 
 
-@router.get("/{group}/{lesson_id}", 
+@router.get("/{group}/{lesson_id}/details", 
   status_code=status.HTTP_200_OK,
   operation_id="ReadScheduleById",
   response_model=SchedulePrivate,
@@ -228,6 +228,77 @@ async def get_schedule_by_id(
       detail="Lesson not found."
     )
   return schedule_lesson
+
+
+@router.put("/{group}/{lesson_id}",
+  status_code=status.HTTP_200_OK,
+  operation_id="UpdateSchedule")
+async def update_schedule(
+  group: Annotated[str, Path()],
+  lesson_id: Annotated[str, Path()],
+  schedule_update: Annotated[ScheduleUpdate, Body()],
+  user: Annotated[MongoClient, Security(get_current_user, scopes=["teacher"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Updates the lesson specified by `lesson_id`.
+  """
+  teacher = TeacherBase.model_validate(user)
+
+  schedule_db = mongo.get_database("schedule")
+  if schedule_update.subject and schedule_update.subject not in teacher.disciplines:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="You don't have access to this discipline."
+    )
+
+  if group not in await schedule_db.list_collection_names():
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Given group not found."
+    )
+
+  lesson = await schedule_db[group].find_one_and_update(
+    filter={"lesson_id": lesson_id},
+    update={"$set": schedule_update.model_dump(exclude_unset=True)}
+  )
+  if not lesson:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Lesson not found."
+    )
+  
+  return {"message": "The lesson has been successfully updated."}
+
+
+@router.delete("/{group}/{lesson_id}",
+  status_code=status.HTTP_204_NO_CONTENT,
+  operation_id="deleteSchedule",
+  dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
+async def delete_schedule(
+  group: Annotated[str, Path()],
+  lesson_id: Annotated[str, Path()],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Deletes the lesson specified by `lesson_id`.
+  """
+  
+  schedule_db = mongo.get_database("schedule")
+  
+  if group not in await schedule_db.list_collection_names():
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Given group not found."
+    )
+
+  if not await schedule_db[group].find_one_and_delete({"lesson_id": lesson_id}):
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Lesson not found."
+    )
+  
+  return {"message": "The lesson has been deleted."}
 
 
 @router.post("/{group}/{lesson_id}/attachment",
@@ -377,74 +448,3 @@ async def detach_schedule_file(
   )
 
   return {"message": "The file has been successfully detached."}
-
-
-@router.put("/{group}/{lesson_id}",
-  status_code=status.HTTP_200_OK,
-  operation_id="UpdateSchedule")
-async def update_schedule(
-  group: Annotated[str, Path()],
-  lesson_id: Annotated[str, Path()],
-  schedule_update: Annotated[ScheduleUpdate, Body()],
-  user: Annotated[MongoClient, Security(get_current_user, scopes=["teacher"])],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
-):
-  """
-  Updates the lesson specified by `lesson_id`.
-  """
-  teacher = TeacherBase.model_validate(user)
-
-  schedule_db = mongo.get_database("schedule")
-  if schedule_update.subject and schedule_update.subject not in teacher.disciplines:
-    raise HTTPException(
-      status_code=status.HTTP_403_FORBIDDEN,
-      detail="You don't have access to this discipline."
-    )
-
-  if group not in await schedule_db.list_collection_names():
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Given group not found."
-    )
-
-  lesson = await schedule_db[group].find_one_and_update(
-    filter={"lesson_id": lesson_id},
-    update={"$set": schedule_update.model_dump(exclude_unset=True)}
-  )
-  if not lesson:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Lesson not found."
-    )
-  
-  return {"message": "The lesson has been successfully updated."}
-
-
-@router.delete("/{group}/{lesson_id}",
-  status_code=status.HTTP_200_OK,
-  operation_id="DeleteSchedule",
-  dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
-async def delete_schedule(
-  group: Annotated[str, Path()],
-  lesson_id: Annotated[str, Path()],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
-):
-  """
-  Deletes the lesson specified by `lesson_id`.
-  """
-  
-  schedule_db = mongo.get_database("schedule")
-  
-  if group not in await schedule_db.list_collection_names():
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Given group not found."
-    )
-
-  if not await schedule_db[group].find_one_and_delete({"lesson_id": lesson_id}):
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Lesson not found."
-    )
-  
-  return {"message": "The lesson has been deleted."}

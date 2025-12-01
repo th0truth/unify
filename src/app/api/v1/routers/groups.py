@@ -70,7 +70,7 @@ async def create_group(
   return create_group
 
 
-@router.get("/my",
+@router.get("/me",
   status_code=status.HTTP_200_OK,
   operation_id="ReadCurrentUserGroup",
   response_model=GroupBase)
@@ -163,6 +163,7 @@ async def get_group(
  
 
 @router.delete("/{group}",
+  status_code=status.HTTP_204_NO_CONTENT,
   operation_id="DeleteGroupByName",
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def delete_group(

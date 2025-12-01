@@ -71,7 +71,7 @@ async def create_student(
   return {"message": "The student account was created successfully."}
 
 
-@router.post("/{group}/all",
+@router.post("/{group}",
   status_code=status.HTTP_200_OK,
   operation_id="ReadStudentsByGroup",
   response_model=List[StudentBase],
@@ -92,7 +92,7 @@ async def get_students_by_group(
   })
 
 
-@router.post("/my/grades",
+@router.post("/me/grades",
   status_code=status.HTTP_200_OK,
   operation_id="ReadCurrentUserGrades")
 async def get_current_student_grades(
@@ -110,7 +110,7 @@ async def get_current_student_grades(
   return await StudentCRUD(grades_db).get_grades(edbo_id=student.edbo_id, group=student.group.en, subject=grade_body.subject, date=date) 
 
 
-@router.get("/my/grades/all",
+@router.get("/me/grades/all",
   status_code=status.HTTP_200_OK,
   operation_id="ReadCurrentUserGradesAll")
 async def get_current_student_all_grades(

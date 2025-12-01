@@ -44,7 +44,7 @@ async def create_teacher(
   return {"message": "The teacher account was created successfully."}
 
 
-@router.get("/assigned/groups/{group}/disciplines",
+@router.get("/assigned/{group}/disciplines",
   response_model=List,
   status_code=status.HTTP_200_OK,
   operation_id="ReadAssignedDisicplines")

@@ -109,7 +109,7 @@ async def update_all_users(
 
 
 @router.patch("/{edbo_id}",
-  status_code=status.HTTP_200_OK,
+  status_code=status.HTTP_204_NO_CONTENT,
   operation_id="UpdateUserByEdboID",
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def update_user(
@@ -137,7 +137,7 @@ async def update_user(
 
 
 @router.delete("/{edbo_id}",
-  status_code=status.HTTP_200_OK,
+  status_code=status.HTTP_204_NO_CONTENT,
   operation_id="DeleteUser",
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def delete_user(
