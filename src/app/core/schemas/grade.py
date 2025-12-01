@@ -14,4 +14,4 @@ class SetGrade(GradeBase):
 class GradeGroup(BaseModel):
   student: UserInitial
   edbo_id: int
-  disciplines: dict
+  discipline: dict

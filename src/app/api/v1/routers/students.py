@@ -205,9 +205,24 @@ async def get_assesment_students(
   )
 
   users_db = mongo.get_database("users")
+
+  filtered_grades_docs = []
+  
+  grade_doc: dict
   for grade_doc in grades_docs:
     student = await UserCRUD(users_db).find(username=grade_doc.get("edbo_id"))
     if student: grade_doc.update({"student": UserInitial.model_validate(student)}) 
+
+    if "disciplines" in grade_doc:
+      original_disciplines: dict = grade_doc.pop("disciplines", {})
+
+      filtered_disciplines = {
+        discipline: original_disciplines.get(discipline, {})
+      }
+
+      grade_doc["discipline"] = filtered_disciplines
+
+    filtered_grades_docs.append(grade_doc)
 
   return grades_docs
 
