@@ -25,6 +25,7 @@ router = APIRouter(tags=["User"])
 
 @router.get("/me",
   status_code=status.HTTP_200_OK,
+  operation_id="GetCurrentUser",
   response_model_exclude={"password"},
   response_model_exclude_none=True)
 async def get_active_user(
@@ -38,6 +39,7 @@ async def get_active_user(
 
 @router.get("/initial", 
   status_code=status.HTTP_200_OK,
+  operation_id="GetCurrentUserInitial",
   response_model=UserInitial)
 async def get_user_initial(
   user: Annotated[dict, Depends(get_current_user)]
@@ -49,7 +51,8 @@ async def get_user_initial(
 
 
 @router.patch("/email",
-  status_code=status.HTTP_200_OK)
+  status_code=status.HTTP_200_OK,
+  operation_id="AddEmailToCurrentUser")
 async def add_user_email(
   user_update: Annotated[UpdateEmail, Body()],
   user: Annotated[dict, Depends(get_current_user)],
@@ -114,7 +117,8 @@ async def add_user_email(
 
 
 @router.patch("/password",
-  status_code=status.HTTP_200_OK)
+  status_code=status.HTTP_200_OK,
+  operation_id="UpdateCurrentUserPassword")
 async def update_password_me(
   update_body: Annotated[UpdatePassword, Body()],
   user: Annotated[dict, Depends(get_current_user)],
@@ -141,6 +145,7 @@ async def update_password_me(
 
 
 @router.patch("/password-recovery",
+  operation_id="RecoverUserPassword",
   status_code=status.HTTP_200_OK)
 async def password_recovery(
   update_body: Annotated[PasswordRecovery, Body()],

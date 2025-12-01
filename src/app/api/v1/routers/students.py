@@ -33,7 +33,7 @@ router = APIRouter(tags=["Students"])
 
 @router.post("",
   status_code=status.HTTP_201_CREATED,
-  operation_id="createStudent",
+  operation_id="CreateStudent",
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def create_student(
   create_student: Annotated[StudentCreate, Body()],
@@ -73,7 +73,7 @@ async def create_student(
 
 @router.post("/{group}/all",
   status_code=status.HTTP_200_OK,
-  operation_id="getStudentsByGroup",
+  operation_id="ReadStudentsByGroup",
   response_model=List[StudentBase],
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def get_students_by_group(
@@ -94,7 +94,7 @@ async def get_students_by_group(
 
 @router.post("/my/grades",
   status_code=status.HTTP_200_OK,
-  operation_id="getMyGrades")
+  operation_id="ReadCurrentUserGrades")
 async def get_current_student_grades(
   grade_body: Annotated[GradeBase, Body()],
   user: Annotated[dict, Security(get_current_user, scopes=["student"])],
@@ -112,7 +112,7 @@ async def get_current_student_grades(
 
 @router.get("/my/grades/all",
   status_code=status.HTTP_200_OK,
-  operation_id="getMyGradesAll")
+  operation_id="ReadCurrentUserGradesAll")
 async def get_current_student_all_grades(
   user: Annotated[StudentBase, Security(get_current_user, scopes=["student"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -129,7 +129,7 @@ async def get_current_student_all_grades(
 
 @router.post("/{edbo_id}/grades",
   status_code=status.HTTP_200_OK,
-  operation_id="getStudentGradesBySubject",
+  operation_id="ReadStudentGradesBySubject",
   response_model_exclude_none = True,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def get_student_grades_by_subject(
@@ -150,7 +150,7 @@ async def get_student_grades_by_subject(
 
 @router.get("/{edbo_id}/grades/all",
   status_code=status.HTTP_200_OK,
-  operation_id="getStudentGradesAll",
+  operation_id="ReadtudentGradesAll",
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def get_student_all_grades(
   edbo_id: Annotated[int, Path()],
@@ -169,7 +169,7 @@ async def get_student_all_grades(
 
 @router.post("/{group}/assesment/all",
   status_code=status.HTTP_200_OK,
-  operation_id="getStudentsAllGrades",
+  operation_id="ReadStudentsAllGrades",
   response_model=List[GradeGroup])
 async def get_assesment_students(
   group: Annotated[str, Path()],
@@ -214,7 +214,7 @@ async def get_assesment_students(
 
 @router.patch("/{edbo_id}/assessment",
   status_code=status.HTTP_201_CREATED,
-  operation_id="assessStudent")
+  operation_id="AssessStudentByEdboID")
 async def student_assessment(
   edbo_id: Annotated[int, Path()],
   grade_body: Annotated[SetGrade, Body()],
@@ -258,7 +258,7 @@ async def student_assessment(
 
 @router.get("/disciplines",
   status_code=status.HTTP_200_OK,
-  operation_id="getStudentDisciplines")
+  operation_id="ReadStudentDisciplines")
 async def get_student_disciplines(
   user: Annotated[dict, Security(get_current_user, scopes=["student"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],

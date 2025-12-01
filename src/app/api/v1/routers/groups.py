@@ -33,7 +33,7 @@ async def get_detail_disciplines(mongo: MongoClient, *, group: dict) -> dict:
 
 @router.post("",
   status_code=status.HTTP_201_CREATED,
-  operation_id="createGroup",
+  operation_id="CreateGroup",
   response_model=GroupCreate,
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def create_group(
@@ -72,7 +72,7 @@ async def create_group(
 
 @router.get("/my",
   status_code=status.HTTP_200_OK,
-  operation_id="getMyGroup",
+  operation_id="ReadCurrentUserGroup",
   response_model=GroupBase)
 async def get_current_user_group(
   user: Annotated[dict, Security(get_current_user, scopes=["student", "teacher"])],
@@ -113,7 +113,7 @@ async def get_current_user_group(
 
 @router.get("/all",
   status_code=status.HTTP_200_OK,
-  operation_id="getGroups",
+  operation_id="ReadAllGroups",
   response_model=Dict[str, List[GroupBase]],
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def get_groups(
@@ -133,7 +133,7 @@ async def get_groups(
 
 @router.get("/{group}",
   status_code=status.HTTP_200_OK,
-  operation_id="getGroup",
+  operation_id="ReadGroupByName",
   response_model=GroupBase,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def get_group(
@@ -163,7 +163,7 @@ async def get_group(
  
 
 @router.delete("/{group}",
-  operation_id="deleteGroup",
+  operation_id="DeleteGroupByName",
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def delete_group(
   group: Annotated[str, Path()],

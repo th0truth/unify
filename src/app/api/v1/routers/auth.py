@@ -26,6 +26,7 @@ router = APIRouter(tags=["Authentication"])
 
 @router.post("/login",
   status_code=status.HTTP_200_OK,
+  operation_id="LoginUser",
   response_model=TokenPayload)
 async def login(
   form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
@@ -58,6 +59,7 @@ async def login(
 
 @router.post("/token",
   status_code=status.HTTP_200_OK,
+  operation_id="ValidateAuthToken",
   response_model=TokenPayload)
 async def auth_token(
   token: Annotated[TokenBase, Header(alias="Authorization")],
@@ -98,6 +100,7 @@ async def auth_token(
 
 @router.post("/logout",
   status_code=status.HTTP_200_OK,
+  operation_id="LogoutUser",
   dependencies=[Depends(get_current_user)])
 async def logout(
   token: Annotated[TokenBase, Header()],

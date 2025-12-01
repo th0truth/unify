@@ -27,7 +27,7 @@ router = APIRouter(tags=["Users"])
     
 @router.get("/{edbo_id}",
   status_code=status.HTTP_200_OK,
-  operation_id="getUserByEdboID",
+  operation_id="GetUserByEdboID",
   response_model=UserBase,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def read_user(
@@ -71,7 +71,7 @@ async def read_user(
 
 @router.get("/{role}/all",
   status_code=status.HTTP_200_OK,
-  operation_id="getUsersAllByRole",
+  operation_id="GetUsersAllByRole",
   response_model=List[UserBase],
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def read_users(
@@ -87,7 +87,7 @@ async def read_users(
 
 @router.patch("/{role}",
   status_code=status.HTTP_200_OK,
-  operation_id="updateAllUsersByRole",
+  operation_id="UpdateAllUsersByRole",
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def update_all_users(
   role: Annotated[str, Path()],
@@ -110,7 +110,7 @@ async def update_all_users(
 
 @router.patch("/{edbo_id}",
   status_code=status.HTTP_200_OK,
-  operation_id="updateUserByEdboID",
+  operation_id="UpdateUserByEdboID",
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
 async def update_user(
   edbo_id: Annotated[int, Path()],
@@ -138,7 +138,7 @@ async def update_user(
 
 @router.delete("/{edbo_id}",
   status_code=status.HTTP_200_OK,
-  operation_id="deleteUser",
+  operation_id="DeleteUser",
   dependencies=[Security(get_current_user, scopes=["admin"])])
 async def delete_user(
   edbo_id: Annotated[int, Path()],
