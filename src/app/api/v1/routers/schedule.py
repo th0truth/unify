@@ -148,9 +148,7 @@ async def get_current_user_schedule(
           updated_lesson = {
             **lesson,
             "teacher": UserInitial.model_validate(teacher),
-            "grade": grades_doc.get(lesson.get("subject"), {}).get(lesson.get("date")),
-            "grade_system": await GradeCRUD.get_grade_system(
-              (await GradeCRUD(grades_db).read(student.group.en, filter={"edbo_id": student.edbo_id}, exclude=["_id"])).get("grade_systems"), lesson.get("subject"))
+            "grade": grades_doc.get(lesson.get("subject"), {}).get(lesson.get("date"))
           }
           lesson.clear()
           lesson.update(SchedulePrivate.model_validate(updated_lesson).model_dump())
