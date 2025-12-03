@@ -64,10 +64,10 @@ async def create_group(
       )
   
   await groups_db[degree].insert_one(
-    create_group.model_dump()
+    group_data.model_dump()
   )
   
-  return create_group
+  return group_data
 
 
 @router.get("/me",
@@ -107,8 +107,7 @@ async def get_current_user_group(
       detail="Group not found"
     )
   
-  group = await get_detail_disciplines(mongo, group=group)
-  return group
+  return await get_detail_disciplines(mongo, group=group)
 
 
 @router.get("/all",
@@ -158,8 +157,7 @@ async def get_group(
       detail="Group not found."
     )
   
-  student_group = await get_detail_disciplines(mongo, group=student_group)
-  return student_group
+  return await get_detail_disciplines(mongo, group=student_group)
  
 
 @router.delete("/{group}",

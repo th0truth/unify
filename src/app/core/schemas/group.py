@@ -15,6 +15,5 @@ class GroupBase(BaseModel):
   disciplines: Any
   class_teacher_edbo: int
 
-
 class GroupCreate(GroupBase):
   date: datetime
