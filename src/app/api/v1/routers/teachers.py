@@ -101,12 +101,7 @@ async def get_assigned_groups(
     group_list = await BaseCRUD(groups_db).read_all(
       collection=degree,
       filter={
-        "$expr": {
-        "$in": [
-            teacher.edbo_id,
-            {"$map": {"input": {"$objectToArray": "$disciplines"}, "as": "d", "in": "$$d.v"}}
-          ]
-        }
+        "class_teacher_edbo": teacher.edbo_id  
       }
     )
     groups.update({degree: group_list})
