@@ -138,10 +138,10 @@ async def update_password_me(
       headers={"WWW-Authenticate": "Bearer"}
     )
 
-  # Update the user data
+  # Update the user password
   await UserCRUD(users_db).update(username=user.get("edbo_id"), update={"password": Hash.hash(plain=update_body.new_password)})
 
-  return {"message": "The password was updated."}
+  return {"message": "The password has been updated."}
 
 
 @router.patch("/recovery",
@@ -150,40 +150,16 @@ async def update_password_me(
 async def password_recovery(
   update_body: Annotated[PasswordRecovery, Body()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
-  background_tasks: BackgroundTasks
 ):
   """
   Password recovery for the current user.
   """
-  # Update the user data
+  # Update the user password
   users_db = mongo.get_database("users")
-  if not (user := await UserCRUD(users_db).update(username=update_body.email, update={"password": Hash.hash(plain=update_body.new_password)})):
+  if not await UserCRUD(users_db).update(username=update_body.email, update={"password": Hash.hash(plain=update_body.new_password)}):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="User not found."
     )
-
-  # Generate verification code
-  verification_code = generate_verification_code()
-
-  # Render HTML template
-  html_code = render_template(
-    template_name="email/reset_password.html",
-    context={
-      "company": settings.COMPANY_NAME,
-      "name": user.get("first_name"),
-      "account_name": update_body.email,
-      "verification_code": verification_code
-    })
-
-  # Send the email
-  background_tasks.add_task(
-    send_email,
-    to=update_body.email,
-    subject=f"Hi.",
-    html_content=html_code,
-    text_content="Description.",
-    reply_to_name="Support",
-  )
 
   return {"message": "The user's password has been recovered."}

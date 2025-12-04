@@ -1,6 +1,5 @@
-from typing import Optional, List, Union
+from typing import Union
 
-from core.config import ModelType
 from .base import BaseCRUD
 
 class GradeCRUD(BaseCRUD):
@@ -9,7 +8,7 @@ class GradeCRUD(BaseCRUD):
 
   @staticmethod
   async def get_grade_system(grade_system: dict, subject: str) -> Union[str, None]:
+    if grade_system is None: return
     for system, subjects in grade_system.items():
       if subject in subjects:
         return system
-    return
