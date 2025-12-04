@@ -38,7 +38,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
-from crud import StudentCRUD, GradeCRUD
+from crud import StudentCRUD
 
 router = APIRouter(tags=["Schedule"])
 
