@@ -71,7 +71,7 @@ async def create_student(
   return {"message": "The student account was created successfully."}
 
 
-@router.post("/{group}",
+@router.get("/{group}",
   status_code=status.HTTP_200_OK,
   operation_id="ReadStudentsByGroup",
   response_model=List[StudentBase],
