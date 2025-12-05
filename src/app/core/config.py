@@ -38,8 +38,6 @@ class Settings(BaseSettings):
   SUMMARY: str = ""
   VERSION: str = "0.0.1"
 
-  COMPANY_NAME: str = ""
-
   FRONTEND_HOST: str = "http://localhost:10000"
 
   BACKEND_CORS_ORIGINS: Annotated[
@@ -82,11 +80,6 @@ class Settings(BaseSettings):
   CLOUDINARY_API_KEY: int
   CLOUDINARY_API_SECRET: str
   
-  # MailerSend secrets
-  MAILERSEND_API_KEY: str
-  MAILERSEND_SMTP_EMAIL: str
-  MAILERSEND_SMTP_NAME: str
-
   # JWT settings
   JWT_ALGORITHM: str = "RS256"
   JWT_EXPIRE_MINUTES: int

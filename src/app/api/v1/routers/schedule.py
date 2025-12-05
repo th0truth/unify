@@ -168,17 +168,24 @@ async def get_current_user_schedule(
       teacher = UserBase.model_validate(user)
 
       redis_key = f"cache:user:{teacher.edbo_id}:schedule"
+      
+      if (schedule_cache := await redis.get(redis_key)):
+        try:
+          return json.loads(schedule_cache)
+        except json.JSONDecodeError:
+          logger.error({"message": "[x] Failed decode schedule from Redis cache.", "detail": str(err)}, exc_info=True)
 
+      schedule_list = []
       for group in await schedule_db.list_collection_names():
         schedule = await schedule_db[group].find({"teacher_edbo": teacher.edbo_id}).to_list()
         for lesson in schedule:
           lesson.update({"teacher": UserInitial.model_validate(teacher)})
-
-
+          schedule_list.append(lesson)
+      
       # Store student schedule in Redis cache
       await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(schedule, default=str))
       
-      return schedule
+      return schedule_list
 
 
 @router.get("/{group}",
