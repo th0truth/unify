@@ -71,6 +71,58 @@ async def create_student(
   return {"message": "The student account was created successfully."}
 
 
+
+@router.get("/disciplines",
+  status_code=status.HTTP_200_OK,
+  operation_id="ReadStudentDisciplines")
+async def get_student_disciplines(
+  user: Annotated[dict, Security(get_current_user, scopes=["student"])],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
+  redis: Annotated[Redis, Depends(get_redis_client)]
+):
+  """
+  Returns the current student's disciplines.
+  """
+  student = StudentBase.model_validate(user)
+
+  redis_key = f"cache:groups:{student.group.en}:disciplines"
+
+  # Check if group disciplines exist in Redis cache
+  if (disciplines_cache := await redis.get(redis_key)):
+    try:
+      return json.loads(disciplines_cache)
+    except json.JSONDecodeError as err:
+      logger.error({"message": "[x] Failed decode student's disciplines from Redis cache.", "detail": str(err)}, exc_info=True)
+
+  disciplines = {}
+  groups_db = mongo.get_database("groups")
+  for degree in await groups_db.list_collection_names():
+    if (student_group := await BaseCRUD(groups_db).read(degree, filter={
+      "$or": [
+        {"group.en": student.group.en},
+        {"group.ua": student.group.ua}
+      ]
+    })):
+      break
+  if not student_group:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="Group not found."
+    )
+   
+  users_db = mongo.get_database("users")
+  for subject, edbo_id in student_group.get("disciplines").items():
+    if (teacher := await UserCRUD(users_db).find(username=edbo_id)):
+      disciplines.update({
+      subject: TeacherBase(**teacher).model_dump()
+    })
+  
+  # Store group disciplines in Redis cache
+  await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, value=json.dumps(disciplines))
+
+  return disciplines
+
+
 @router.get("/{group}",
   status_code=status.HTTP_200_OK,
   operation_id="ReadStudentsByGroup",
@@ -270,54 +322,3 @@ async def student_assessment(
     )
     
   return {"message": "Student successfully assessed."}
-
-
-@router.get("/disciplines",
-  status_code=status.HTTP_200_OK,
-  operation_id="ReadStudentDisciplines")
-async def get_student_disciplines(
-  user: Annotated[dict, Security(get_current_user, scopes=["student"])],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)],
-  redis: Annotated[Redis, Depends(get_redis_client)]
-):
-  """
-  Returns the current student's disciplines.
-  """
-  student = StudentBase.model_validate(user)
-
-  redis_key = f"cache:groups:{student.group.en}:disciplines"
-
-  # Check if group disciplines exist in Redis cache
-  if (disciplines_cache := await redis.get(redis_key)):
-    try:
-      return json.loads(disciplines_cache)
-    except json.JSONDecodeError as err:
-      logger.error({"message": "[x] Failed decode student's disciplines from Redis cache.", "detail": str(err)}, exc_info=True)
-
-  disciplines = {}
-  groups_db = mongo.get_database("groups")
-  for degree in await groups_db.list_collection_names():
-    if (student_group := await BaseCRUD(groups_db).read(degree, filter={
-      "$or": [
-        {"group.en": student.group.en},
-        {"group.ua": student.group.ua}
-      ]
-    })):
-      break
-  if not student_group:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Group not found."
-    )
-   
-  users_db = mongo.get_database("users")
-  for subject, edbo_id in student_group.get("disciplines").items():
-    if (teacher := await UserCRUD(users_db).find(username=edbo_id)):
-      disciplines.update({
-      subject: TeacherBase(**teacher).model_dump()
-    })
-  
-  # Store group disciplines in Redis cache
-  await redis.setex(redis_key, timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, value=json.dumps(disciplines))
-
-  return disciplines
