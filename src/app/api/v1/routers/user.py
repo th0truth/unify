@@ -1,13 +1,12 @@
 from typing import Annotated
-from datetime import timedelta
 from fastapi import (
-  BackgroundTasks,
   HTTPException,
   APIRouter,
   status,
   Depends,
   Body
 )
+
 from core.schemas.user import UserInitial
 from core.schemas.etc import UpdateEmail, UpdatePassword, PasswordRecovery
 from core.security.utils import Hash
@@ -57,7 +56,6 @@ async def add_user_email(
   user: Annotated[dict, Depends(get_current_user)],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
   redis: Annotated[Redis, Depends(get_redis_client)],
-  background_tasks: BackgroundTasks
 ):
   """
   Adds an email to the user account.
@@ -70,17 +68,18 @@ async def add_user_email(
       detail="That email is already associated with another account."
     )
   
+  edbo_id = user.get("edbo_id")
+
   # Verify the user's credentials
-  if not (user := await UserCRUD(users_db).authenticate(username=user.get("edbo_id"), plain_pwd=user_update.password)):
+  if not await UserCRUD(users_db).authenticate(username=edbo_id, plain_pwd=user_update.password):
     raise HTTPException(
       status_code=status.HTTP_401_UNAUTHORIZED,
       detail="Couldn't validate credentials",
       headers={"WWW-Authenticate": "Bearer"}
     )
-  edbo_id = user.get("edbo_id")
 
   # Update the user data
-  await UserCRUD(users_db).update(username=edbo_id, update_doc={"email": {"address": user_update.email, "is_verified": False}})
+  await UserCRUD(users_db).update(username=edbo_id, update={"email": {"address": user_update.email, "is_verified": False}})
 
   # Delete user profile from Redis cache 
   await redis.delete(f"cache:user:{edbo_id}:profile")
