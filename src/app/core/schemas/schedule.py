@@ -1,6 +1,6 @@
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel
 
 from .user import UserInitial
 from .group import LocalizedGroup
@@ -11,13 +11,13 @@ class ScheduleDate(BaseModel):
   endAt: datetime
 
 class ScheduleBase(BaseModel):
-  subject: str
+  subject: str = Field(max_length=50, min_length=1)
   position: int
   classroom: int
   event: ScheduleDate
   date: str
-  topic: str
-  homework: str
+  topic: str = Field(max_length=128)
+  homework: str = Field(max_length=128)
 
 class ScheduleCreate(ScheduleBase):
   group: LocalizedGroup

@@ -148,7 +148,7 @@ async def get_current_user_schedule(
           updated_lesson = {
             **lesson,
             "teacher": UserInitial.model_validate(teacher),
-            "grade": grades_doc.get(lesson.get("subject"), {}).get(lesson.get("date"))
+            "grade": grades_doc.get(lesson.get("subject"), {}).get("grades", {}).get(lesson.get("date"))
           }
           lesson.clear()
           lesson.update(SchedulePrivate.model_validate(updated_lesson).model_dump())
