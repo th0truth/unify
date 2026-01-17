@@ -1,6 +1,6 @@
-# Unify
+# UnifiedAPI
 
-**Unify**, is an open-source system RESTful API that offers simplify tasks with course managment, assesment and related operations for educational institutions. It provides endpoints for handling users, groups, disciplines, courses, etc.
+**UnifiedAPI**, is an open-source system RESTful API that offers simplify tasks with course managment, assesment and related operations for educational institutions. It provides endpoints for handling users, groups, disciplines, courses, etc.
 
 ## **Features**
 
@@ -18,13 +18,13 @@
 
 # **Installation**
 
-The current recommend way to install unify is from source.
+The current recommend way to install UnifiedAPI is from source.
 
 ## From source
 
 ```bash
-git clone https://github.com/th0truth/unify.git
-cd unify
+git clone https://github.com/UnifiedLS/unified-api.git
+cd unified-api
 ```
 
 ## Requirements
@@ -34,7 +34,7 @@ cd unify
 
 # Configure
 
-You must rename .env.example to .env and fill in your required secrets and configuration values.
+You must rename `.env.example` to `.env `and fill in your required secrets and configuration values.
 
 ## **Usage**
 
@@ -44,19 +44,6 @@ If you have installed `bash`.
 bash scripts/build.sh
 
 bash scripts/run.sh 
-```
-
-Alternative way:
-
-```bash
-python -m venv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-pip install poetry
-
-poetry install --no-root
-
-docker compose up # -d
 ```
 
 ## **Docs**
