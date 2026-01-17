@@ -4,6 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import (
   HTTPException,
   APIRouter,
+  Request,
   status,
   Depends,
   Header
@@ -18,7 +19,8 @@ from core.db import MongoClient
 from api.dependencies import (
   get_mongo_client,
   get_redis_client,
-  get_current_user
+  get_current_user,
+  limiter
 )
 from crud import UserCRUD
 
@@ -26,12 +28,14 @@ router = APIRouter(tags=["Authentication"])
 
 @router.post("/login",
   status_code=status.HTTP_200_OK,
-  operation_id="LoginUser",
+  operation_id="AuthLogin",
   response_model=TokenPayload)
+@limiter.limit("10/minute")
 async def login(
   form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
-  redis: Annotated[Redis, Depends(get_redis_client)] 
+  redis: Annotated[Redis, Depends(get_redis_client)],
+  request: Request
 ):
   """
   Log in using user credentials.
@@ -59,11 +63,12 @@ async def login(
 
 @router.post("/token",
   status_code=status.HTTP_200_OK,
-  operation_id="ValidateAuthToken",
-  response_model=TokenPayload)
+  operation_id="AuthValidateToken",
+  response_model=TokenPayload,
+  dependencies=[Depends(get_current_user)])
 async def auth_token(
   token: Annotated[TokenBase, Header(alias="Authorization")],
-  redis: Annotated[Redis, Depends(get_redis_client)]
+  redis: Annotated[Redis, Depends(get_redis_client)],
 ):
   """
   Log in using an access token.
