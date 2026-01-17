@@ -98,3 +98,5 @@ class Settings(BaseSettings):
   )
 
 settings = Settings()
+  
+REDIS_URI: str = f"redis://{settings.REDIS_USERNAME}:{settings.REDIS_PASSWORD}@{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}"
