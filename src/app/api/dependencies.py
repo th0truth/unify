@@ -1,13 +1,17 @@
 from typing import Annotated, AsyncGenerator
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Request, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from redis.asyncio import Redis
 from datetime import timedelta
 import json
 
-from core.logger import logger
-from core.config import settings
+# Rate Limiting Dependencies
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
+# Local Dependencies
+from core.logger import logger
+from core.config import settings, REDIS_URI
 from core.security.jwt import OAuthJWTBearer
 from core.db import MongoClient, RedisClient
 from crud import UserCRUD
@@ -88,3 +92,22 @@ async def get_current_user(
       )
     
   return user
+
+
+# Create a limiter that tracks requests by JTI or IP address
+def get_limit_key(request: Request) -> str:
+  if (api_key := request.headers.get("Authorization")):
+    token = api_key.split()
+    if (payload := OAuthJWTBearer.decode(token[1])):
+      return payload.get("jti")
+  return get_remote_address(request)
+
+
+# Initialize SlowAPI Limiter
+limiter = Limiter(
+  key_func=get_limit_key,
+  storage_uri=REDIS_URI,
+  default_limits=["5/10seconds"],
+  in_memory_fallback_enabled=True,
+  # headers_enabled=True
+)
