@@ -1,6 +1,10 @@
 from starlette.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, status, Request
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, status
+
+# Rate Limiting Dependencies
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 # Local Dependencies
 from core.logger import logger
@@ -10,6 +14,7 @@ from core.db import (
   MongoClient,
   RedisClient
 )
+from api.dependencies import limiter
 from api.api import api_main_router
 
 # Initilize lifespan events
@@ -24,6 +29,7 @@ async def lifespan(app: FastAPI):
     await MongoClient.close()
     await RedisClient.close()
 
+
 # Initialize an app
 app = FastAPI(
   title=settings.NAME,
@@ -34,13 +40,21 @@ app = FastAPI(
   lifespan=lifespan
 )
 
+# Attach limiter to the App
+app.state.limiter = limiter
+
+# Return a 429 status code when limits are exceeded
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
 @app.get("/health",
   tags=["Health Check"],
   summary="Perform a Health Check",
   response_description="Return HTTP Status Code 200 (OK)",
   status_code=status.HTTP_200_OK,
   response_model=HealthCheck)
-async def healt_check():
+@limiter.exempt
+async def healt_check(request: Request):
   return HealthCheck(status="ok")
 
 # Set all CORS enabled origins
