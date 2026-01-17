@@ -1,6 +1,6 @@
-# UnifiedAPI
+# Unified API
 
-**UnifiedAPI**, is an open-source system RESTful API that offers simplify tasks with course managment, assesment and related operations for educational institutions. It provides endpoints for handling users, groups, disciplines, courses, etc.
+**Unified API**, is a RESTful API that offers simplify tasks with course managment, assesment and related operations for educational institutions. It provides endpoints for handling users, groups, disciplines, courses, etc.
 
 ## **Features**
 
@@ -23,8 +23,8 @@ The current recommend way to install UnifiedAPI is from source.
 ## From source
 
 ```bash
-git clone https://github.com/UnifiedLS/unified-api.git
-cd unified-api
+git clone https://github.com/UnifiedLS/api.git
+cd api
 ```
 
 ## Requirements
