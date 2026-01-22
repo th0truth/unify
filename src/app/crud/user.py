@@ -21,8 +21,8 @@ class UserCRUD(BaseCRUD):
         for key in exclude:
           user.pop(key, None)
       return user
-    except Exception as e:
-      logger.error({"message": "[x] An error occured while searching user profile in MongoDB.", "detail": str(e)}, exc_info=True)
+    except Exception as err:
+      logger.error({"message": "[x] An error occured while searching user profile in MongoDB.", "detail": str(err)}, exc_info=True)
       return
 
   async def create(self, user: ModelType):
