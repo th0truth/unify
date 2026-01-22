@@ -18,7 +18,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
-from api.dependencies import limiter
+from api.dependencies import get_limit_by_role
 from crud import UserCRUD
 
 router = APIRouter(tags=["User"])
@@ -27,8 +27,8 @@ router = APIRouter(tags=["User"])
   status_code=status.HTTP_200_OK,
   operation_id="GetCurrentUser",
   response_model_exclude={"password"},
-  response_model_exclude_none=True)
-@limiter.limit("10/minute")
+  response_model_exclude_none=True,
+  dependencies=[Depends(get_limit_by_role)])
 async def get_active_user(
   user: Annotated[dict, Depends(get_current_user)],
   request: Request

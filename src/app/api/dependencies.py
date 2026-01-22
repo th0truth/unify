@@ -1,4 +1,4 @@
-from typing import Annotated, AsyncGenerator
+from typing import Annotated, Union, AsyncGenerator
 from fastapi import Depends, Request, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from redis.asyncio import Redis
@@ -7,11 +7,12 @@ import json
 
 # Rate Limiting Dependencies
 from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 # Local Dependencies
 from core.logger import logger
-from core.config import settings, REDIS_URI
+from core.config import settings, REDIS_URI, RATE_LIMITS
 from core.security.jwt import OAuthJWTBearer
 from core.db import MongoClient, RedisClient
 from crud import UserCRUD
@@ -19,6 +20,14 @@ from crud import UserCRUD
 # OAuth2 scheme for authentication
 oauth2_scheme = OAuth2PasswordBearer(
   tokenUrl=f"{settings.API_V1_STR}/auth/login",
+)
+
+# Initialize SlowAPI Limiter
+limiter = Limiter(
+  key_func=get_remote_address,
+  storage_uri=REDIS_URI,
+  strategy="moving-window",
+  headers_enabled=False
 )
 
 async def get_mongo_client() -> AsyncGenerator[MongoClient, None]:
@@ -94,20 +103,36 @@ async def get_current_user(
   return user
 
 
-# Create a limiter that tracks requests by JTI or IP address
-def get_limit_key(request: Request) -> str:
-  if (api_key := request.headers.get("Authorization")):
-    token = api_key.split()
-    if (payload := OAuthJWTBearer.decode(token[1])):
-      return payload.get("jti")
-  return get_remote_address(request)
+def get_user_role(request: Request) -> Union[str, None]:
+  """Extract the user's role from the JWT payload."""
+  if (auth_token := request.headers.get("Authorization")):
+    access_token = auth_token.split()[1]
+    if (payload := OAuthJWTBearer.decode(token=access_token)):
+      return payload.get("role")
+  return
 
 
-# Initialize SlowAPI Limiter
-limiter = Limiter(
-  key_func=get_limit_key,
-  storage_uri=REDIS_URI,
-  default_limits=["5/10seconds"],
-  in_memory_fallback_enabled=True,
-  # headers_enabled=True
-)
+def get_limit_by_role(request: Request) -> Union[str, None]:
+  """Declare a Rate Limit dependency."""
+  role = get_user_role(request)
+  limit = RATE_LIMITS.get(role, "5/minute")
+
+  # Create unique key combining role and IP
+  # key = f"{role}:{get_remote_address(request)}"
+
+  # Define a function that slowapi can decorate
+  @limiter.limit(limit)
+  def _rate_limit_check(request: Request):
+    """Dummy function for rate limit check"""
+    pass
+
+
+  # Check rate limit manually
+  try:
+    _rate_limit_check(request)
+  except RateLimitExceeded:
+    raise HTTPException(
+      status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+      detail="Rate limit exceeded."
+    )
+  return role
