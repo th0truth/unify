@@ -74,7 +74,7 @@ async def auth_token(
   Log in using an access token.
   """
   # Decode a user's JWT
-  if not (payload := OAuthJWTBearer.decode(token.access_token)):
+  if not (payload := OAuthJWTBearer.decode(token=token.access_token)):
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
       detail="Invalid token."
@@ -115,7 +115,7 @@ async def logout(
   Log out from user account.
   """
   # Decode a user's JWT 
-  payload = OAuthJWTBearer.decode(token.access_token)
+  payload = OAuthJWTBearer.decode(token=token.access_token)
   jti, exp = payload.get("jti"), payload.get("exp")
 
   # Check if jti is revoked
