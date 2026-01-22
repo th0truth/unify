@@ -242,7 +242,7 @@ async def get_assesment_students(
 
   role = user.get("role")
   match role:
-    case "teachers":
+    case "teacher":
       teacher = TeacherBase.model_validate(user)
       if discipline not in teacher.disciplines:
         raise HTTPException(

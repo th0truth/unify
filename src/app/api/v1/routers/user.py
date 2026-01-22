@@ -3,6 +3,7 @@ from fastapi import (
   HTTPException,
   APIRouter,
   status,
+  Request,
   Depends,
   Body
 )
@@ -17,6 +18,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
+from api.dependencies import limiter
 from crud import UserCRUD
 
 router = APIRouter(tags=["User"])
@@ -26,8 +28,10 @@ router = APIRouter(tags=["User"])
   operation_id="GetCurrentUser",
   response_model_exclude={"password"},
   response_model_exclude_none=True)
+@limiter.limit("10/minute")
 async def get_active_user(
-  user: Annotated[dict, Depends(get_current_user)]
+  user: Annotated[dict, Depends(get_current_user)],
+  request: Request
 ):
   """
   Returns user data.

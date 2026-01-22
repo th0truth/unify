@@ -84,7 +84,7 @@ async def get_current_user_group(
   groups_db = mongo.get_database("groups")
   role = user.get("role")
   match role:
-    case "students":
+    case "student":
       student = StudentBase.model_validate(user)
       for degree in await groups_db.list_collection_names():
         if (group := await groups_db[degree].find_one(
@@ -95,7 +95,7 @@ async def get_current_user_group(
         )):
           break
 
-    case "teachers":
+    case "teacher":
       teacher = TeacherBase.model_validate(user)
       for degree in await groups_db.list_collection_names():
         if (group := await groups_db[degree].find_one({"class_teacher_edbo": teacher.edbo_id})):
