@@ -74,6 +74,11 @@ class Settings(BaseSettings):
   
   CACHE_EXPIRE_MINUTES: int
   VERIFICATION_CODE_EXPIRE: int
+
+  # Rate limits
+  RATE_LIMIT_ADMIN: str
+  RATE_LIMIT_STUDENT: str
+  RATE_LIMIT_TEACHER: str
   
   # Cloudinary secrets
   CLOUDINARY_CLOUD_NAME: str
@@ -99,4 +104,9 @@ class Settings(BaseSettings):
 
 settings = Settings()
   
-REDIS_URI: str = f"redis://{settings.REDIS_USERNAME}:{settings.REDIS_PASSWORD}@{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}"
+REDIS_URI = f"redis://{settings.REDIS_USERNAME}:{settings.REDIS_PASSWORD}@{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}"
+RATE_LIMITS = {
+  "admin": settings.RATE_LIMIT_ADMIN,
+  "student": settings.RATE_LIMIT_STUDENT,
+  "teacher": settings.RATE_LIMIT_TEACHER
+}
