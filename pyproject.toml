@@ -26,4 +26,6 @@ dependencies = [
     "fastapi[standard] (>=0.116.1,<0.117.0)",
     "cryptography>=46.0.3",
     "slowapi>=0.1.9",
+    "authlib>=1.6.6",
+    "itsdangerous>=2.2.0",
 ]
