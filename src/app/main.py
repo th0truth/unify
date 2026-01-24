@@ -1,7 +1,9 @@
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, status, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+import itsdangerous
 
 # Rate Limiting Dependencies
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -55,8 +57,17 @@ limiter = Limiter(
 )
 
 
-# Add middleware BEFORE slowapi middleware
+# Add middleware RateLimitMiddleware
 app.add_middleware(RateLimitMiddleware)
+
+app.add_middleware(
+  SessionMiddleware,
+  secret_key=settings.SECRET_KEY,
+  session_cookie="session",
+  max_age=3600,
+  same_site="lax",
+  https_only=False
+)
 
 # Attach limiter to the App
 app.state.limiter = limiter
@@ -76,7 +87,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
   status_code=status.HTTP_200_OK,
   response_model=HealthCheck)
 @limiter.exempt
-async def healt_check(request: Request):
+async def healt_check(
+  request: Request
+):
   return HealthCheck(status="ok")
 
 # Set all CORS enabled origins
