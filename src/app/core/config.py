@@ -79,7 +79,8 @@ class Settings(BaseSettings):
   RATE_LIMIT_ADMIN: str
   RATE_LIMIT_STUDENT: str
   RATE_LIMIT_TEACHER: str
-  
+  RATE_LIMIT_ANONYMOUS: str
+
   # Cloudinary secrets
   CLOUDINARY_CLOUD_NAME: str
   CLOUDINARY_API_KEY: int
@@ -108,5 +109,6 @@ REDIS_URI = f"redis://{settings.REDIS_USERNAME}:{settings.REDIS_PASSWORD}@{setti
 RATE_LIMITS = {
   "admin": settings.RATE_LIMIT_ADMIN,
   "student": settings.RATE_LIMIT_STUDENT,
-  "teacher": settings.RATE_LIMIT_TEACHER
+  "teacher": settings.RATE_LIMIT_TEACHER,
+  "anonymous": settings.RATE_LIMIT_ANONYMOUS
 }
