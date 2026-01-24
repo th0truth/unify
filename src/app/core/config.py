@@ -75,6 +75,12 @@ class Settings(BaseSettings):
   CACHE_EXPIRE_MINUTES: int
   VERIFICATION_CODE_EXPIRE: int
 
+  # Google settings (OAuth)
+  GOOGLE_CLIENT_ID: str
+  GOOGLE_CLIENT_SECRET: str
+
+  SECRET_KEY: str
+
   # Rate limits
   RATE_LIMIT_ADMIN: str
   RATE_LIMIT_STUDENT: str
