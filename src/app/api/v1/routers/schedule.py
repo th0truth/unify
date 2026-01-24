@@ -38,6 +38,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
+from api.dependencies import limit_dependency
 from crud import StudentCRUD
 
 router = APIRouter(tags=["Schedule"])
@@ -52,7 +53,8 @@ cloudinary.config(
 @router.post("",
   status_code=status.HTTP_201_CREATED,
   operation_id="CreateSchedule",
-  response_model=ScheduleBase)
+  response_model=ScheduleBase,
+  dependencies=[Depends(limit_dependency)])
 async def create_schedule(
   schedule: Annotated[ScheduleCreate, Body()],
   user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
@@ -109,7 +111,8 @@ async def create_schedule(
   status_code=status.HTTP_200_OK,
   operation_id="ReadCurrentUserSchedule",
   response_model=List[SchedulePrivate],
-  response_model_exclude_none=True)
+  response_model_exclude_none=True,
+  dependencies=[Depends(limit_dependency)])
 async def get_current_user_schedule(
   user: Annotated[dict, Security(get_current_user, scopes=["student", "teacher"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -193,7 +196,7 @@ async def get_current_user_schedule(
   operation_id="ReadScheduleByGroupName",
   response_model=List[SchedulePrivate],
   response_model_exclude_none=True,
-  dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
+  dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
 async def get_schedule_by_group(
   group: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
@@ -211,7 +214,7 @@ async def get_schedule_by_group(
   operation_id="ReadScheduleLessonById",
   response_model=SchedulePrivate,
   response_model_exclude_none=True,
-  dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
+  dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
 async def get_schedule_by_id(
   group: Annotated[str, Path()],
   lesson_id: Annotated[str, Path()],
@@ -237,7 +240,8 @@ async def get_schedule_by_id(
 
 @router.put("/{group}/{lesson_id}/revision",
   status_code=status.HTTP_200_OK,
-  operation_id="UpdateScheduleLesson")
+  operation_id="UpdateScheduleLesson",
+  dependencies=[Depends(limit_dependency)])
 async def update_schedule_lesson(
   group: Annotated[str, Path()],
   lesson_id: Annotated[str, Path()],
@@ -279,7 +283,7 @@ async def update_schedule_lesson(
 @router.delete("/{group}/{lesson_id}",
   status_code=status.HTTP_204_NO_CONTENT,
   operation_id="DeleteScheduleLessonById",
-  dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
+  dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
 async def delete_schedule_lesson(
   group: Annotated[str, Path()],
   lesson_id: Annotated[str, Path()],
@@ -310,7 +314,8 @@ async def delete_schedule_lesson(
   status_code=status.HTTP_200_OK,
   operation_id="AttachScheduleFiles",
   response_model=List[MetaFile],
-  response_model_exclude_none=True)
+  response_model_exclude_none=True,
+  dependencies=[Depends(limit_dependency)])
 async def upload_schedule_files(
   group: Annotated[str, Path()],
   lesson_id: Annotated[str, Path()],
@@ -393,7 +398,8 @@ async def upload_schedule_files(
 
 @router.post("/{group}/{lesson_id}/attachment/{file_id}",
   status_code=status.HTTP_200_OK,
-  operation_id="DetachScheduleFile")
+  operation_id="DetachScheduleFile",
+  dependencies=[Depends(limit_dependency)])
 async def detach_schedule_file(
   group: Annotated[str, Path()],
   lesson_id: Annotated[str, Path()],

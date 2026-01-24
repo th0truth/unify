@@ -27,6 +27,7 @@ from api.dependencies import (
   get_redis_client,
   get_current_user
 )
+from api.dependencies import limit_dependency
 from crud import BaseCRUD, UserCRUD, StudentCRUD
 
 router = APIRouter(tags=["Students"])
@@ -34,7 +35,7 @@ router = APIRouter(tags=["Students"])
 @router.post("",
   status_code=status.HTTP_201_CREATED,
   operation_id="CreateStudent",
-  dependencies=[Security(get_current_user, scopes=["admin"])])
+  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
 async def create_student(
   create_student: Annotated[StudentCreate, Body()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)] 
@@ -74,7 +75,8 @@ async def create_student(
 
 @router.get("/disciplines",
   status_code=status.HTTP_200_OK,
-  operation_id="ReadStudentDisciplines")
+  operation_id="ReadStudentDisciplines",
+  dependencies=[Depends(limit_dependency)])
 async def get_student_disciplines(
   user: Annotated[dict, Security(get_current_user, scopes=["student"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -127,7 +129,7 @@ async def get_student_disciplines(
   status_code=status.HTTP_200_OK,
   operation_id="ReadStudentsByGroup",
   response_model=List[StudentBase],
-  dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
+  dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
 async def get_students_by_group(
   group: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
@@ -147,7 +149,8 @@ async def get_students_by_group(
 @router.post("/me/grades",
   status_code=status.HTTP_200_OK,
   operation_id="ReadCurrentUserGrades",
-  response_model_exclude_none=True)
+  response_model_exclude_none=True,
+  dependencies=[Depends(limit_dependency)])
 async def get_current_student_grades(
   grade_body: Annotated[GradeBase, Body()],
   user: Annotated[dict, Security(get_current_user, scopes=["student"])],
@@ -165,7 +168,8 @@ async def get_current_student_grades(
 
 @router.get("/me/grades/all",
   status_code=status.HTTP_200_OK,
-  operation_id="ReadCurrentUserGradesAll")
+  operation_id="ReadCurrentUserGradesAll",
+  dependencies=[Depends(limit_dependency)])
 async def get_current_student_all_grades(
   user: Annotated[StudentBase, Security(get_current_user, scopes=["student"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -184,7 +188,7 @@ async def get_current_student_all_grades(
   status_code=status.HTTP_200_OK,
   operation_id="ReadStudentGradesBySubject",
   response_model_exclude_none = True,
-  dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
+  dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
 async def get_student_grades_by_subject(
   edbo_id: Annotated[int, Path()],
   grade_body: Annotated[GradeBase, Body()],
@@ -204,7 +208,7 @@ async def get_student_grades_by_subject(
 @router.get("/{edbo_id}/grades/all",
   status_code=status.HTTP_200_OK,
   operation_id="ReadtudentGradesAll",
-  dependencies=[Security(get_current_user, scopes=["teacher", "admin"])])
+  dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
 async def get_student_all_grades(
   edbo_id: Annotated[int, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -223,7 +227,8 @@ async def get_student_all_grades(
 @router.post("/{group}/assesment/all",
   status_code=status.HTTP_200_OK,
   operation_id="ReadStudentsAllGrades",
-  response_model=List[GradeGroup])
+  response_model=List[GradeGroup],
+  dependencies=[Depends(limit_dependency)])
 async def get_assesment_students(
   group: Annotated[str, Path()],
   discipline: Annotated[str, Body()],
@@ -282,7 +287,8 @@ async def get_assesment_students(
 
 @router.patch("/{edbo_id}/assessment",
   status_code=status.HTTP_201_CREATED,
-  operation_id="AssessStudentByEdboID")
+  operation_id="AssessStudentByEdboID",
+  dependencies=[Depends(limit_dependency)])
 async def student_assessment(
   edbo_id: Annotated[int, Path()],
   grade_body: Annotated[SetGrade, Body()],

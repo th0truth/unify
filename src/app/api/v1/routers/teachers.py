@@ -15,6 +15,7 @@ from api.dependencies import (
   get_mongo_client,
   get_current_user
 )
+from api.dependencies import limit_dependency
 from crud import UserCRUD, BaseCRUD
 
 router = APIRouter(tags=["Teachers"])
@@ -22,7 +23,7 @@ router = APIRouter(tags=["Teachers"])
 @router.post("",
   status_code=status.HTTP_201_CREATED,
   operation_id="CreateTeacher",
-  dependencies=[Security(get_current_user, scopes=["admin"])])
+  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
 async def create_teacher(
   create_teacher: Annotated[TeacherCreate, Body()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
@@ -47,7 +48,8 @@ async def create_teacher(
 @router.get("/assigned/{group}/disciplines",
   response_model=List,
   status_code=status.HTTP_200_OK,
-  operation_id="ReadAssignedDisicplines")
+  operation_id="ReadAssignedDisicplines",
+  dependencies=[Depends(limit_dependency)])
 async def get_assigned_disiciplines(
   group: Annotated[str, Path()],
   user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
@@ -85,7 +87,8 @@ async def get_assigned_disiciplines(
 @router.get("/assigned/groups",
   status_code=status.HTTP_200_OK,
   operation_id="ReadAssignedGroups",
-  response_model=Dict[str, List[TeacherGroup]])
+  response_model=Dict[str, List[TeacherGroup]],
+  dependencies=[Depends(limit_dependency)])
 async def get_assigned_groups(
   user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]

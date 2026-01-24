@@ -4,20 +4,20 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 # Rate Limiting Dependencies
-from slowapi import _rate_limit_exceeded_handler
+from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 # Local Dependencies
 from core.middleware.limiter import RateLimitMiddleware 
 
 from core.logger import logger
-from core.config import settings
+from core.config import settings, REDIS_URI
 from core.schemas.etc import HealthCheck
 from core.db import (
   MongoClient,
   RedisClient
 )
-from api.dependencies import limiter
+from api.dependencies import get_identifier
 from api.api import api_main_router
 
 # Initilize lifespan events
@@ -42,6 +42,18 @@ app = FastAPI(
   openapi_url="/api/openapi.json",
   lifespan=lifespan
 )
+
+
+# Initialize SlowAPI limiter
+limiter = Limiter(
+  key_func=get_identifier,
+  default_limits=["20/minute"],
+  strategy="moving-window",
+  storage_uri=REDIS_URI,
+  headers_enabled=False,
+  swallow_errors=False
+)
+
 
 # Add middleware BEFORE slowapi middleware
 app.add_middleware(RateLimitMiddleware)

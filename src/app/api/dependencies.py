@@ -5,13 +5,13 @@ from redis.asyncio import Redis
 from datetime import timedelta
 import json
 
-# Rate Limiting Dependencies
+# SlowAPI dependencies
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 # Local Dependencies
 from core.logger import logger
-from core.config import settings, REDIS_URI, RATE_LIMITS
+from core.config import settings
 from core.security.jwt import OAuthJWTBearer
 from core.db import MongoClient, RedisClient
 from crud import UserCRUD
@@ -111,16 +111,6 @@ def get_identifier(request: Request) -> str:
   """Get unique identifier for rate limiting."""
   return getattr(request.state, "identifier", get_remote_address(request))
 
-
-# Initialize Rate limiter
-limiter = Limiter(
-  key_func=get_identifier,
-  default_limits=["20/minute"],
-  strategy="moving-window",
-  storage_uri=REDIS_URI,
-  headers_enabled=False,
-  swallow_errors=False
-)
 
 def _set_name_from_func(func):
   """Helper to copy function name/module to decorated function."""
