@@ -1,4 +1,4 @@
-from typing import Annotated, Union, AsyncGenerator
+from typing import Annotated, Optional, AsyncGenerator
 from fastapi import Depends, Request, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from redis.asyncio import Redis
@@ -7,7 +7,6 @@ import json
 
 # Rate Limiting Dependencies
 from slowapi import Limiter
-from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 # Local Dependencies
@@ -20,14 +19,6 @@ from crud import UserCRUD
 # OAuth2 scheme for authentication
 oauth2_scheme = OAuth2PasswordBearer(
   tokenUrl=f"{settings.API_V1_STR}/auth/login",
-)
-
-# Initialize SlowAPI Limiter
-limiter = Limiter(
-  key_func=get_remote_address,
-  storage_uri=REDIS_URI,
-  strategy="moving-window",
-  headers_enabled=False
 )
 
 async def get_mongo_client() -> AsyncGenerator[MongoClient, None]:
@@ -103,36 +94,71 @@ async def get_current_user(
   return user
 
 
-def get_user_role(request: Request) -> Union[str, None]:
-  """Extract the user's role from the JWT payload."""
+def get_jwt_payload(request: Request) -> Optional[dict]:
+  """Extract and decode JWT payload from Authorization header"""
   if (auth_token := request.headers.get("Authorization")):
-    access_token = auth_token.split()[1]
-    if (payload := OAuthJWTBearer.decode(token=access_token)):
-      return payload.get("role")
+    try:
+      access_token = auth_token.split()[1]
+      if (payload := OAuthJWTBearer.decode(token=access_token)):
+        return payload
+    except Exception:
+      pass
   return
 
 
-def get_limit_by_role(request: Request) -> Union[str, None]:
-  """Declare a Rate Limit dependency."""
-  role = get_user_role(request)
-  limit = RATE_LIMITS.get(role, "5/minute")
 
-  # Create unique key combining role and IP
-  # key = f"{role}:{get_remote_address(request)}"
+def get_identifier(request: Request) -> str:
+  """Get unique identifier for rate limiting."""
+  return getattr(request.state, "identifier", get_remote_address(request))
 
-  # Define a function that slowapi can decorate
-  @limiter.limit(limit)
-  def _rate_limit_check(request: Request):
-    """Dummy function for rate limit check"""
+
+def get_limit_value(limit: str) -> str:
+  """Get rate limit from request state (set by middleware)"""
+  return RATE_LIMITS.get(limit, settings.RATE_LIMIT_ANONYMOUS) 
+
+
+# Initialize Rate limiter
+limiter = Limiter(
+  key_func=get_identifier,
+  default_limits=["20/minute"],
+  strategy="moving-window",
+  storage_uri=REDIS_URI,
+  headers_enabled=False,
+  swallow_errors=False
+)
+
+def _set_name_from_func(func):
+  """Helper to copy function name/module to decorated function."""
+  def decorator(f):
+    f.__name__ = func.__name__
+    f.__module__ = func.__module__
+    return f
+
+  return decorator
+
+
+async def limit_dependency(request: Request) -> None:
+  """Dependency that applies rate limiting dynamically based on request.state."""
+  limiter: Limiter = request.app.state.limiter
+
+  @_set_name_from_func(request.scope.get("endpoint"))
+  async def dummy(request: Request):
     pass
+  
+  # Get dynamic values from request.state (set by middleware)
+  limit_value = getattr(request.state, "limit_value", settings.RATE_LIMIT_ANONYMOUS)
 
+  def key_func(request: Request) -> str:
+    return getattr(request.state, "identifier", request.client.host)
 
-  # Check rate limit manually
-  try:
-    _rate_limit_check(request)
-  except RateLimitExceeded:
-    raise HTTPException(
-      status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-      detail="Rate limit exceeded."
-    )
-  return role
+  endpoint_key = f"{dummy.__module__}.{dummy.__name__}"
+  limiter._route_limits.pop(endpoint_key, None)
+
+  check_request_limit = limiter.limit(
+    limit_value=limit_value,
+    key_func=key_func,
+  )(dummy)
+    
+  await check_request_limit(request)
+
+  return
