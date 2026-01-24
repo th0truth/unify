@@ -112,11 +112,6 @@ def get_identifier(request: Request) -> str:
   return getattr(request.state, "identifier", get_remote_address(request))
 
 
-def get_limit_value(limit: str) -> str:
-  """Get rate limit from request state (set by middleware)"""
-  return RATE_LIMITS.get(limit, settings.RATE_LIMIT_ANONYMOUS) 
-
-
 # Initialize Rate limiter
 limiter = Limiter(
   key_func=get_identifier,
