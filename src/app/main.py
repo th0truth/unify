@@ -1,5 +1,6 @@
 from starlette.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, status, Request
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 # Rate Limiting Dependencies
@@ -7,6 +8,8 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 # Local Dependencies
+from core.middleware.limiter import RateLimitMiddleware 
+
 from core.logger import logger
 from core.config import settings
 from core.schemas.etc import HealthCheck
@@ -40,12 +43,19 @@ app = FastAPI(
   lifespan=lifespan
 )
 
+# Add middleware BEFORE slowapi middleware
+app.add_middleware(RateLimitMiddleware)
+
 # Attach limiter to the App
 app.state.limiter = limiter
 
-# Return a 429 status code when limits are exceeded
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+async def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+  return JSONResponse(
+    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+    content={"detail": "Rate limit exceeded. Please try again later."}
+  )
 
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.get("/health",
   tags=["Health Check"],
