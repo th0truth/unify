@@ -35,7 +35,6 @@ async def login(
   form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
   redis: Annotated[Redis, Depends(get_redis_client)],
-  request: Request
 ):
   """
   Log in using user credentials.
