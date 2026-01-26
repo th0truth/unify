@@ -11,16 +11,25 @@ from slowapi.util import get_remote_address
 
 # Local Dependencies
 from core.logger import logger
-from core.config import settings
+from core.config import settings, REDIS_URI
 from core.security.jwt import OAuthJWTBearer
 from core.database import MongoClient, RedisClient
 from crud import UserCRUD
 
-# OAuth2 scheme for authentication
-oauth2_scheme = OAuth2PasswordBearer(
-  tokenUrl=f"{settings.API_V1_STR}/auth/login",
-)
+def get_identifier(request: Request) -> str:
+  """Get unique identifier for rate limiting."""
+  return getattr(request.state, "identifier", get_remote_address(request))
 
+
+# Initialize rate limiter
+limiter = Limiter(
+  key_func=get_identifier,
+  default_limits=["20/minute"],
+  strategy="moving-window",
+  storage_uri=REDIS_URI,
+  headers_enabled=False,
+  swallow_errors=False
+)
 
 async def get_mongo_client() -> AsyncGenerator[MongoClient, None]:
   """Dependency to get MongoDB client."""
@@ -34,6 +43,12 @@ async def get_redis_client() -> AsyncGenerator[RedisClient, None]:
   if not RedisClient._client:
     await RedisClient.connect()
   yield RedisClient._client
+
+
+# OAuth2 scheme for authentication
+oauth2_scheme = OAuth2PasswordBearer(
+  tokenUrl=f"{settings.API_V1_STR}/auth/login",
+)
 
 
 async def get_current_user(
@@ -105,12 +120,6 @@ def get_jwt_payload(request: Request) -> Optional[dict]:
     except Exception:
       pass
   return
-
-
-
-def get_identifier(request: Request) -> str:
-  """Get unique identifier for rate limiting."""
-  return getattr(request.state, "identifier", get_remote_address(request))
 
 
 def _set_name_from_func(func):
