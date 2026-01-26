@@ -21,6 +21,7 @@ oauth2_scheme = OAuth2PasswordBearer(
   tokenUrl=f"{settings.API_V1_STR}/auth/login",
 )
 
+
 async def get_mongo_client() -> AsyncGenerator[MongoClient, None]:
   """Dependency to get MongoDB client."""
   if not MongoClient._client:

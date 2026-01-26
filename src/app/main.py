@@ -1,16 +1,16 @@
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, status, Request
-from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import itsdangerous
 
 # Rate Limiting Dependencies
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 
 # Local Dependencies
 from core.middleware.limiter import RateLimitMiddleware 
+from core.errors import rate_limit_exceeded_handler
 
 from core.logger import logger
 from core.config import settings, REDIS_URI
@@ -46,7 +46,7 @@ app = FastAPI(
 )
 
 
-# Initialize SlowAPI limiter
+# Initialize rate limiter
 limiter = Limiter(
   key_func=get_identifier,
   default_limits=["20/minute"],
@@ -59,7 +59,6 @@ limiter = Limiter(
 
 # Add middleware RateLimitMiddleware
 app.add_middleware(RateLimitMiddleware)
-
 app.add_middleware(
   SessionMiddleware,
   secret_key=settings.SECRET_KEY,
@@ -69,16 +68,9 @@ app.add_middleware(
   https_only=False
 )
 
-# Attach limiter to the App
+# Attach limiter to the app
 app.state.limiter = limiter
-
-async def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
-  return JSONResponse(
-    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-    content={"detail": "Rate limit exceeded. Please try again later."}
-  )
-
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 @app.get("/health",
   tags=["Health Check"],
