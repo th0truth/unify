@@ -20,8 +20,8 @@ from core.schemas.student import StudentBase, StudentCreate
 from core.schemas.grade import GradeBase, SetGrade, GradeGroup
 from core.schemas.teacher import TeacherBase
 
-from core.db import MongoClient
 from redis.asyncio import Redis
+from core.database import MongoClient
 from api.dependencies import (
   get_mongo_client,
   get_redis_client,

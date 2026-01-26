@@ -10,7 +10,7 @@ from fastapi import (
 )
 from core.schemas.group import GroupBase
 from core.schemas.teacher import TeacherBase, TeacherCreate, TeacherGroup
-from core.db import MongoClient
+from core.database import MongoClient
 from api.dependencies import (
   get_mongo_client,
   get_current_user

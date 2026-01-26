@@ -31,8 +31,8 @@ from core.schemas.user import UserInitial, UserBase
 from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase
 from core.schemas.etc import MetaFile
-from core.db import MongoClient
 from redis.asyncio import Redis
+from core.database import MongoClient
 from api.dependencies import (
   get_mongo_client,
   get_redis_client,

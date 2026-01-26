@@ -15,7 +15,7 @@ from core.errors import rate_limit_exceeded_handler
 from core.logger import logger
 from core.config import settings, REDIS_URI
 from core.schemas.etc import HealthCheck
-from core.db import (
+from core.database import (
   MongoClient,
   RedisClient
 )

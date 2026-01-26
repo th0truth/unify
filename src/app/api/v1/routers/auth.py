@@ -4,7 +4,6 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import (
   HTTPException,
   APIRouter,
-  Request,
   status,
   Depends,
   Header
@@ -15,7 +14,7 @@ from core.config import settings
 from core.schemas.token import TokenBase, TokenPayload
 from core.security.jwt import OAuthJWTBearer
 from redis.asyncio import Redis
-from core.db import MongoClient
+from core.database import MongoClient
 from api.dependencies import (
   get_mongo_client,
   get_redis_client,

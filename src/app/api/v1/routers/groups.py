@@ -12,7 +12,7 @@ from core.schemas.user import UserBase
 from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase
 from core.schemas.group import GroupBase, GroupCreate
-from core.db import MongoClient
+from core.database import MongoClient
 from api.dependencies import (
   get_mongo_client,
   get_current_user
