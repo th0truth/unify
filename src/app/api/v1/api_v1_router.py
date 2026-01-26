@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from .routers import (
+  health,
   google_auth,
   auth,
   teachers,
@@ -14,6 +15,7 @@ from .routers import (
 api_v1_router = APIRouter()
 
 # Include routers
+api_v1_router.include_router(health.router, prefix="/health")
 api_v1_router.include_router(google_auth.router, prefix="/auth")
 api_v1_router.include_router(auth.router, prefix="/auth")
 api_v1_router.include_router(user.router, prefix="/user")
