@@ -30,7 +30,6 @@ uv sync --frozen --no-install-project --no-dev
 
 # Copy the project into the image
 COPY ./src/app /app/     
-COPY .env /app/
 
 # Sync the project
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -38,4 +37,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 EXPOSE 10000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000", "--reload"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000", "--workers", "4", "--log-level", "info", "--proxy-headers"]
