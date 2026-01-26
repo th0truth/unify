@@ -1,5 +1,6 @@
 from typing import Annotated
 from datetime import timedelta
+from fastapi.responses import RedirectResponse
 from fastapi import (
   HTTPException,
   APIRouter,
@@ -16,7 +17,6 @@ from authlib.integrations.base_client.errors import (
 from core.logger import logger
 from core.config import settings
 
-from core.schemas.token import TokenPayload
 from core.security.jwt import OAuthJWTBearer
 from core.services.oauth import google_oauth
 from redis.asyncio import Redis
@@ -30,26 +30,25 @@ from crud import UserCRUD
 
 router = APIRouter(tags=["Authentication"])
 
-@router.get("/login/google",
-  status_code=status.HTTP_200_OK,
+@router.get("/google",
+  openapi_extra="AuthGoogle",
   dependencies=[Depends(limit_dependency)])
-async def login_via_google(
+async def login_google(
   request: Request
 ):
   """
   Redirects the user to Google's authorization page to sign in with Google.  
   After consent, Google redirects back to the `/google` callback endpoint where the token exchange happens.
   """
-  redirect_uri = str(request.url_for("auth_via_google"))
+  redirect_uri = str(request.url_for("auth_google"))
   return await google_oauth.google.authorize_redirect(request, redirect_uri=redirect_uri)
 
 
-@router.get("/google",
-  status_code=status.HTTP_200_OK,
-  operation_id="GoogleAuth",
-  response_model=TokenPayload,
+@router.get("/google/callback",
+  status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+  operation_id="AuthGoogleCallback",
   dependencies=[Depends(limit_dependency)])
-async def auth_via_google(
+async def auth_google(
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
   redis: Annotated[Redis, Depends(get_redis_client)],
   request: Request
@@ -97,4 +96,19 @@ async def auth_via_google(
   # Store user profile in Redis cache 
   await redis.setex(f"cache:user:{edbo_id}:profile", timedelta(minutes=settings.CACHE_EXPIRE_MINUTES).seconds, json.dumps(user, default=str))
 
-  return TokenPayload(access_token=token["jwt"], role=role)
+  response = RedirectResponse(url=f"{settings.FRONTEND_HOST}/login")
+  response.set_cookie(
+    key="access_token",
+    value=token["jwt"],
+    httponly=False,
+    secure=False,
+    samesite="lax"
+  )
+  response.set_cookie(
+    key="user_role",
+    value=role,
+    httponly=False,
+    secure=False,
+    samesite="lax"
+  )
+  return response
