@@ -31,7 +31,7 @@ from crud import UserCRUD
 router = APIRouter(tags=["Authentication"])
 
 @router.get("/google",
-  openapi_extra="AuthGoogle",
+  operation_id="AuthGoogle",
   dependencies=[Depends(limit_dependency)])
 async def login_google(
   request: Request
