@@ -124,7 +124,7 @@ async def get_current_user_schedule(
   schedule_db = mongo.get_database("schedule")
   role = user.get("role")
   match role:
-    case "student":
+    case "students":
       student = StudentBase.model_validate(user) 
  
       redis_key = f"cache:groups:{student.group.en}:schedule"
@@ -167,7 +167,7 @@ async def get_current_user_schedule(
           status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
           detail="Internal server error."
         )
-    case "teacher":
+    case "teachers":
       teacher = UserBase.model_validate(user)
 
       redis_key = f"cache:user:{teacher.edbo_id}:schedule"

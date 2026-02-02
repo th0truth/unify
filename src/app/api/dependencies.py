@@ -58,7 +58,9 @@ async def get_current_user(
   security_scopes: SecurityScopes
 ) -> dict:
   # Decode the user's JWT
+  print(token)
   if not (payload := OAuthJWTBearer.decode(token=token)):
+    print(payload)
     raise HTTPException(
       status_code=status.HTTP_401_UNAUTHORIZED,
       detail="Invalid token.",

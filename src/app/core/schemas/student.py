@@ -17,6 +17,6 @@ class StudentCreate(StudentBase):
   scopes: list = [
     "student"
   ]
-  role: str = "student"
+  role: str = "students"
   acc_date: datetime
   password: PASSWORDstr

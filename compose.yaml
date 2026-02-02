@@ -7,6 +7,10 @@ services:
     env_file: .env
     ports:
       - "10000:10000"
+    network_mode: "bridge"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   nginx:
     image: nginx:1.27

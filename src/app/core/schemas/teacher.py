@@ -13,7 +13,7 @@ class TeacherCreate(TeacherBase):
   scopes: list = [
     "teacher"
   ]
-  role: str = "teacher"
+  role: str = "teachers"
   acc_date: datetime
   password: PASSWORDstr
 

@@ -113,8 +113,8 @@ settings = Settings()
   
 REDIS_URI = f"redis://{settings.REDIS_USERNAME}:{settings.REDIS_PASSWORD}@{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}"
 RATE_LIMITS = {
-  "admin": settings.RATE_LIMIT_ADMIN,
-  "student": settings.RATE_LIMIT_STUDENT,
-  "teacher": settings.RATE_LIMIT_TEACHER,
+  "admins": settings.RATE_LIMIT_ADMIN,
+  "students": settings.RATE_LIMIT_STUDENT,
+  "teachers": settings.RATE_LIMIT_TEACHER,
   "anonymous": settings.RATE_LIMIT_ANONYMOUS
 }

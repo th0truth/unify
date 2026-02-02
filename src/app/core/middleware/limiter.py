@@ -10,12 +10,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
   async def dispatch(self, request, call_next):
     if (payload := get_jwt_payload(request)):
+      print(payload)
       role, jti = payload.get("role"), payload.get("jti")  
       request.state.limit_value = RATE_LIMITS.get(role, settings.RATE_LIMIT_ANONYMOUS)
       request.state.identifier = f"{role}:{jti}"
     else:
       request.state.limit_value = settings.RATE_LIMIT_ANONYMOUS
       request.state.identifier = f"anonymous:{get_remote_address(request)}"
+    print(request.state.limit_value, request.state.identifier)
 
     response = await call_next(request)
     return response
