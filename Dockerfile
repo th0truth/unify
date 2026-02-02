@@ -36,4 +36,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 EXPOSE 10000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000", "--workers", "4", "--log-level", "info", "--proxy-headers"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000", "--workers", "1", "--log-level", "info", "--proxy-headers"]
