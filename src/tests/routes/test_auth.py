@@ -18,7 +18,6 @@ async def test_auth_login(
 
     # Insert test user into mock database
     a = await mock_mongo_db.users.insert_one(test_user)
-    print(a)
 
     # Verify user was inserted
     user = await mock_mongo_db.users.find_one({"edbo_id": test_user["edbo_id"]})
