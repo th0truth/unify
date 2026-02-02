@@ -1,4 +1,3 @@
-# Dockerfile for a FastAPI application with a lightweight image
 FROM python:3.11-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1
@@ -30,7 +29,6 @@ uv sync --frozen --no-install-project --no-dev
 
 # Copy the project into the image
 COPY ./src/app /app/
-COPY .env /app/     
 
 # Sync the project
 RUN --mount=type=cache,target=/root/.cache/uv \
