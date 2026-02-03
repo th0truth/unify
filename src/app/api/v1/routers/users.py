@@ -68,49 +68,10 @@ async def read_user(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
       detail="Internal server error."
     )
-
-
-@router.get("/{role}/all",
-  status_code=status.HTTP_200_OK,
-  operation_id="GetUsersAllByRole",
-  response_model=List[UserBase],
-  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
-async def read_users(
-  role: Annotated[str, Path()],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)],   
-):
-  """
-  Returns all users.
-  """
-  users_db = mongo.get_database("users")
-  return await UserCRUD(users_db).read_all(role)
-
-
-@router.patch("/{role}",
-  status_code=status.HTTP_200_OK,
-  operation_id="UpdateAllUsersByRole",
-  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
-async def update_all_users(
-  role: Annotated[str, Path()],
   
-  update_user: Annotated[UserUpdate, Body()],
-  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
-):
-  """
-  Updates users data.
-  """
-  users_db = mongo.get_database("users")
-  if not (await UserCRUD(users_db).update_all(role, update=update_user)):
-    raise HTTPException(
-      status_code=status.HTTP_409_CONFLICT,
-      detail="Failed to update all users."
-    )
-  
-  return {"message": "User accounts has been updated."}
-
 
 @router.patch("/{edbo_id}",
-  status_code=status.HTTP_204_NO_CONTENT,
+  status_code=status.HTTP_200_OK,
   operation_id="UpdateUserByEdboID",
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
 async def update_user(
@@ -124,11 +85,17 @@ async def update_user(
   """
   users_db = mongo.get_database("users")
   
+  # Convert Pydantic model to dict and exclude unset fields
+  update_data = update_user.model_dump(exclude_unset=True)
+
   # Update the user data
-  if not (await UserCRUD(users_db).update(username=edbo_id, update=update_user)):
+  if not (await UserCRUD(users_db).update(
+    username=edbo_id,
+    update=update_data
+  )):
     raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="User not found."
+      status_code=status.HTTP_400_BAD_REQUEST,
+      detail="No fields provided for update."
     )
   
   # Delete user profile from Redis cache
@@ -162,3 +129,50 @@ async def delete_user(
   await redis.delete(f"cache:user:{edbo_id}:profile")
 
   return {"message": "The user account was deleted successfully."}
+
+
+@router.get("/{role}/all",
+  status_code=status.HTTP_200_OK,
+  operation_id="GetUsersAllByRole",
+  response_model=List[UserBase],
+  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
+async def read_users(
+  role: Annotated[str, Path()],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)],   
+):
+  """
+  Returns all users.
+  """
+  users_db = mongo.get_database("users")
+  return await UserCRUD(users_db).read_all(role)
+
+
+@router.patch("/{role}/all",
+  status_code=status.HTTP_200_OK,
+  operation_id="UpdateAllUsersByRole",
+  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
+async def update_all_users(
+  role: Annotated[str, Path()],
+  
+  update_user: Annotated[UserUpdate, Body()],
+  mongo: Annotated[MongoClient, Depends(get_mongo_client)]
+):
+  """
+  Updates users data.
+  """
+  users_db = mongo.get_database("users")
+  
+  
+  # Convert Pydantic model to dict and exclude unset fields
+  update_data = update_user.model_dump(exclude_unset=True)
+  
+  if not (await UserCRUD(users_db).update_all(
+    collection=role,
+    update=update_data
+  )):
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST,
+      detail="No fields provided for update."
+    )
+  
+  return {"message": "User accounts has been updated."}
