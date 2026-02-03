@@ -35,10 +35,12 @@ class UserCRUD(BaseCRUD):
     """Updates a user profile."""
     if not (user := await self.find(username=username)):
       return
-    return await self.db[user.get("role")].find_one_and_update(
-      filter=user,
-      update={"$set": update}
+    result = await self.db[user.get("role")].find_one_and_update(
+      filter={"edbo_id": user.get("edbo_id")},
+      update={"$set": update},
+      return_document=True
     )
+    return result
 
   async def delete(self, username: Union[str, int]) -> Union[int, None]:
     """Deletes a user profile."""
