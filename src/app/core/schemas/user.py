@@ -22,5 +22,11 @@ class UserPrivate(UserBase):
   password: Optional[str] = None
   scopes: list
 
-class UserUpdate(UserBase):
-  scopes: list
+class UserUpdate(BaseModel):
+  first_name: Optional[str] = None
+  middle_name: Optional[str] = None
+  last_name: Optional[str] = None
+  edbo_id: Optional[int] = None
+  date_of_birth: Optional[str] = None
+  role: Optional[str] = None
+  scopes: Optional[list] = None
