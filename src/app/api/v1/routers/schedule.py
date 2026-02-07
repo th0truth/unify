@@ -122,43 +122,41 @@ async def get_my_schedule(
         grades_doc = await StudentCRUD(grades_db).get_grades(
           edbo_id=student.edbo_id, group=student.group.en
         )
-
-        lesson: dict
+      
+        lesson = {}
         users_db = mongo.get_database("users")
         for lesson in schedule:
           teacher_doc = await users_db["teachers"].find_one({"edbo_id": lesson.pop("teacher_edbo")})
           updated_lesson = {
             **lesson,
             "teacher": UserInitial.model_validate(teacher_doc).model_dump(),
-            "grade": grades_doc.get(lesson.get("subject"), {})
-              .get("grades", {})
-              .get(lesson.get("date")),
+            "grade": grades_doc.get(lesson.get("subject"), {}).get("grades", {}).get(lesson.get("date"))
           }
           lesson.clear()
           lesson.update(SchedulePrivate.model_validate(updated_lesson).model_dump())
 
-          return schedule
+        return schedule
 
       except Exception as err:
         logger.error({"detail": str(err)}, exc_info=True)
         raise HTTPException(
           status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-          detail="Internal server error.",
+          detail="Failed to get user's schedule.",
         )
 
     case "teachers":
       teacher = UserBase.model_validate(user)
 
-      schedule_list = (
+      schedule = (
         await schedule_db["lessons"]
           .find({"teacher_edbo": teacher.edbo_id})
           .to_list()
         )
 
-      for lesson in schedule_list:
+      for lesson in schedule:
         lesson.update({"teacher": UserInitial.model_validate(user).model_dump()})
 
-      return schedule_list
+      return schedule
 
 
 @router.get("/groups/{group}",
