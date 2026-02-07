@@ -150,7 +150,7 @@ async def get_current_user_schedule(
           teacher = await users_db["teachers"].find_one({"edbo_id": lesson.pop("teacher_edbo")})
           updated_lesson = {
             **lesson,
-            "teacher": UserInitial.model_validate(teacher),
+            "teacher": UserInitial.model_validate(teacher).model_dump(),
             "grade": grades_doc.get(lesson.get("subject"), {}).get("grades", {}).get(lesson.get("date"))
           }
           lesson.clear()
@@ -182,7 +182,7 @@ async def get_current_user_schedule(
       for group in await schedule_db.list_collection_names():
         schedule = await schedule_db[group].find({"teacher_edbo": teacher.edbo_id}).to_list()
         for lesson in schedule:
-          lesson.update({"teacher": UserInitial.model_validate(teacher)})
+          lesson.update({"teacher": UserInitial.model_validate(user).model_dump()})
           schedule_list.append(lesson)
       
       # Store student schedule in Redis cache
