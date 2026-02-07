@@ -43,16 +43,9 @@ from crud import StudentCRUD
 
 router = APIRouter(tags=["Schedule"])
 
-cloudinary.config(
-  cloud_name=settings.CLOUDINARY_CLOUD_NAME,
-  api_key=settings.CLOUDINARY_API_KEY,
-  api_secret=settings.CLOUDINARY_API_SECRET,
-  secure=True
-)
-
 @router.post("",
   status_code=status.HTTP_201_CREATED,
-  operation_id="CreateSchedule",
+  operation_id="CreateScheduleLesson",
   response_model=ScheduleBase,
   dependencies=[Depends(limit_dependency)])
 async def create_schedule(
@@ -62,7 +55,7 @@ async def create_schedule(
   redis: Annotated[Redis, Depends(get_redis_client)]
 ):
   """
-  Creates a schedule.
+  Creates a schedule lesson.
   """
   teacher = TeacherBase.model_validate(user)
 
@@ -109,7 +102,7 @@ async def create_schedule(
 
 @router.get("/me",
   status_code=status.HTTP_200_OK,
-  operation_id="ReadCurrentUserSchedule",
+  operation_id="GetMySchedule",
   response_model=List[SchedulePrivate],
   response_model_exclude_none=True,
   dependencies=[Depends(limit_dependency)])
@@ -119,7 +112,7 @@ async def get_current_user_schedule(
   redis: Annotated[Redis, Depends(get_redis_client)]
 ):
   """
-  Returns the schedule for the current user. 
+  Get current user's schedule
   """
   schedule_db = mongo.get_database("schedule")
   role = user.get("role")
@@ -191,9 +184,9 @@ async def get_current_user_schedule(
       return schedule_list
 
 
-@router.get("/{group}",
+@router.get("/groups/{group}",
   status_code=status.HTTP_200_OK,
-  operation_id="ReadScheduleByGroupName",
+  operation_id="GetGroupSchedule",
   response_model=List[SchedulePrivate],
   response_model_exclude_none=True,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
@@ -202,16 +195,16 @@ async def get_schedule_by_group(
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
   """
-  Returns the schedule with the given `group`. 
+  Get schedule for specific group.
   """
   schedule_db = mongo.get_database("schedule")
   schedule = await schedule_db[group].find().to_list()
   return schedule
 
 
-@router.get("/{group}/{lesson_id}/details", 
+@router.get("/lessons/{lesson_id}", 
   status_code=status.HTTP_200_OK,
-  operation_id="ReadScheduleLessonById",
+  operation_id="GetLessonById",
   response_model=SchedulePrivate,
   response_model_exclude_none=True,
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
@@ -221,26 +214,22 @@ async def get_schedule_by_id(
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
   """
-  Returns the schedule with the given `lesson_id`.
+  Get specific lesson details.
   """
   schedule_db = mongo.get_database("schedule")
-  if group not in await schedule_db.list_collection_names():
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Given group not found."
-    )
 
   if not (schedule_lesson := await schedule_db[group].find_one({"lesson_id": lesson_id})):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Lesson not found."
     )
+
   return schedule_lesson
 
 
-@router.put("/{group}/{lesson_id}/revision",
+@router.patch("/{group}/{lesson_id}",
   status_code=status.HTTP_200_OK,
-  operation_id="UpdateScheduleLesson",
+  operation_id="UpdateLesson",
   dependencies=[Depends(limit_dependency)])
 async def update_schedule_lesson(
   group: Annotated[str, Path()],
@@ -282,7 +271,7 @@ async def update_schedule_lesson(
 
 @router.delete("/{group}/{lesson_id}",
   status_code=status.HTTP_204_NO_CONTENT,
-  operation_id="DeleteScheduleLessonById",
+  operation_id="DeleteLesson",
   dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
 async def delete_schedule_lesson(
   group: Annotated[str, Path()],
@@ -290,7 +279,7 @@ async def delete_schedule_lesson(
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
   """
-  Deletes the lesson specified by `lesson_id`.
+  Delete a lesson.
   """
   
   schedule_db = mongo.get_database("schedule")
@@ -310,9 +299,9 @@ async def delete_schedule_lesson(
   return {"message": "The lesson has been deleted."}
 
 
-@router.post("/{group}/{lesson_id}/attachment",
+@router.post("/{group}/lessons/{lesson_id}/attachments",
   status_code=status.HTTP_200_OK,
-  operation_id="AttachScheduleFiles",
+  operation_id="UploadLessonAttachments",
   response_model=List[MetaFile],
   response_model_exclude_none=True,
   dependencies=[Depends(limit_dependency)])
@@ -324,7 +313,7 @@ async def upload_schedule_files(
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
   """
-  Attaches files to the lesson.
+  Upload files to lesson.
   """
   teacher = TeacherBase.model_validate(user)
 
@@ -398,7 +387,7 @@ async def upload_schedule_files(
 
 @router.post("/{group}/{lesson_id}/attachment/{file_id}",
   status_code=status.HTTP_200_OK,
-  operation_id="DetachScheduleFile",
+  operation_id="DeleteLessonAttachment",
   dependencies=[Depends(limit_dependency)])
 async def detach_schedule_file(
   group: Annotated[str, Path()],
@@ -408,7 +397,7 @@ async def detach_schedule_file(
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
   """
-  Detaches the file from the lesson.
+  Remove file from lesson.
   """
   teacher = TeacherBase.model_validate(user)
 
