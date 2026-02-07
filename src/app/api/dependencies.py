@@ -11,7 +11,7 @@ from slowapi.util import get_remote_address
 
 # Local Dependencies
 from core.logger import logger
-from core.config import settings, REDIS_URI
+from core.config import settings
 from core.security.jwt import OAuthJWTBearer
 from core.database import MongoClient, RedisClient
 from crud import UserCRUD
@@ -26,7 +26,7 @@ limiter = Limiter(
   key_func=get_identifier,
   default_limits=["20/minute"],
   strategy="moving-window",
-  storage_uri=REDIS_URI,
+  storage_uri=settings.REDIS_URI,
   headers_enabled=False,
   swallow_errors=False
 )
