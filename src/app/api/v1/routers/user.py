@@ -9,7 +9,11 @@ from fastapi import (
 )
 
 from core.schemas.user import UserInitial
-from core.schemas.etc import UpdateEmail, UpdatePassword, PasswordRecovery
+from core.schemas.etc import (
+  UpdateEmail,
+  UpdatePassword,
+  PasswordRecovery
+)
 from core.security.utils import Hash
 from core.database import MongoClient
 from redis.asyncio import Redis
@@ -23,12 +27,14 @@ from crud import UserCRUD
 
 router = APIRouter(tags=["User"])
 
+
 @router.get("/me",
   status_code=status.HTTP_200_OK,
   operation_id="GetCurrentUser",
   response_model_exclude={"password"},
   response_model_exclude_none=True,
-  dependencies=[Depends(limit_dependency)])
+  dependencies=[
+    Depends(limit_dependency)])
 async def get_active_user(
   user: Annotated[dict, Depends(get_current_user)]
 ):
@@ -42,7 +48,8 @@ async def get_active_user(
   status_code=status.HTTP_200_OK,
   operation_id="GetCurrentUserInitial",
   response_model=UserInitial,
-  dependencies=[Depends(limit_dependency)])
+  dependencies=[
+    Depends(limit_dependency)])
 async def get_user_initial(
   user: Annotated[dict, Depends(get_current_user)]
 ):
@@ -55,7 +62,8 @@ async def get_user_initial(
 @router.patch("/email",
   status_code=status.HTTP_200_OK,
   operation_id="AddEmailToCurrentUser",
-  dependencies=[Depends(limit_dependency)])
+  dependencies=[
+    Depends(limit_dependency)])
 async def add_user_email(
   user_update: Annotated[UpdateEmail, Body()],
   user: Annotated[dict, Depends(get_current_user)],
@@ -96,7 +104,8 @@ async def add_user_email(
 @router.patch("/password",
   status_code=status.HTTP_200_OK,
   operation_id="UpdateCurrentUserPassword",
-  dependencies=[Depends(limit_dependency)])
+  dependencies=[
+    Depends(limit_dependency)])
 async def update_password_me(
   update_body: Annotated[UpdatePassword, Body()],
   user: Annotated[dict, Depends(get_current_user)],
@@ -125,7 +134,8 @@ async def update_password_me(
 @router.patch("/recovery",
   operation_id="RecoverUserPassword",
   status_code=status.HTTP_200_OK,
-  dependencies=[Depends(limit_dependency)])
+  dependencies=[
+    Depends(limit_dependency)])
 async def password_recovery(
   update_body: Annotated[PasswordRecovery, Body()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],

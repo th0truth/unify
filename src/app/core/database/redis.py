@@ -60,3 +60,4 @@ class RedisClient(DBConnection):
         logger.error({"msg": "[x] Error closing Redis connection.", "detail": err})
       finally:
         cls._client = None
+

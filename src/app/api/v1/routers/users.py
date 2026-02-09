@@ -13,6 +13,7 @@ from datetime import timedelta
 
 from core.logger import logger
 from core.config import settings
+
 from core.schemas.user import UserBase, UserUpdate
 from core.database import MongoClient
 from redis.asyncio import Redis
@@ -26,11 +27,14 @@ from crud import UserCRUD
 
 router = APIRouter(tags=["Users"])
     
+    
 @router.get("/{edbo_id}",
   status_code=status.HTTP_200_OK,
   operation_id="GetUserByEdboID",
   response_model=UserBase,
-  dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
+  dependencies=[
+    Security(get_current_user, scopes=["teacher", "admin"]),
+    Depends(limit_dependency)])
 async def read_user(
   edbo_id: Annotated[int, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -73,7 +77,9 @@ async def read_user(
 @router.patch("/{edbo_id}",
   status_code=status.HTTP_200_OK,
   operation_id="UpdateUserByEdboID",
-  dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
+  dependencies=[
+    Security(get_current_user, scopes=["teacher", "admin"]),
+    Depends(limit_dependency)])
 async def update_user(
   edbo_id: Annotated[int, Path()],
   update_user: Annotated[UserUpdate, Body()],
@@ -107,7 +113,9 @@ async def update_user(
 @router.delete("/{edbo_id}",
   status_code=status.HTTP_204_NO_CONTENT,
   operation_id="DeleteUser",
-  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
+  dependencies=[
+    Security(get_current_user, scopes=["admin"]),
+    Depends(limit_dependency)])
 async def delete_user(
   edbo_id: Annotated[int, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -135,7 +143,9 @@ async def delete_user(
   status_code=status.HTTP_200_OK,
   operation_id="GetUsersAllByRole",
   response_model=List[UserBase],
-  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
+  dependencies=[
+    Security(get_current_user, scopes=["admin"]),
+    Depends(limit_dependency)])
 async def read_users(
   role: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],   
@@ -150,7 +160,9 @@ async def read_users(
 @router.patch("/{role}/all",
   status_code=status.HTTP_200_OK,
   operation_id="UpdateAllUsersByRole",
-  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
+  dependencies=[
+    Security(get_current_user, scopes=["admin"]),
+    Depends(limit_dependency)])
 async def update_all_users(
   role: Annotated[str, Path()],
   

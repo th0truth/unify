@@ -75,3 +75,4 @@ class OAuthJWTBearer:
     Checks if the `jti` is in blacklist.
     """
     return await redis.exists(f"session:blacklist:jti:{jti}")
+

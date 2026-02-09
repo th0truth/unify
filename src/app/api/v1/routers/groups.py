@@ -8,6 +8,7 @@ from fastapi import (
   Path,
   Body
 )
+
 from core.schemas.user import UserBase
 from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase
@@ -20,6 +21,7 @@ from api.dependencies import (
 from api.dependencies import limit_dependency
 
 router = APIRouter(tags=["Groups"])
+
 
 async def get_detail_disciplines(mongo: MongoClient, *, group: dict) -> dict:
   users_db = mongo.get_database("users")
@@ -36,7 +38,9 @@ async def get_detail_disciplines(mongo: MongoClient, *, group: dict) -> dict:
   status_code=status.HTTP_201_CREATED,
   operation_id="CreateGroup",
   response_model=GroupCreate,
-  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
+  dependencies=[
+    Security(get_current_user, scopes=["admin"]),
+    Depends(limit_dependency)])
 async def create_group(
   group_data: Annotated[GroupCreate, Body()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
@@ -75,7 +79,8 @@ async def create_group(
   status_code=status.HTTP_200_OK,
   operation_id="ReadCurrentUserGroup",
   response_model=GroupBase,
-  dependencies=[Depends(limit_dependency)])
+  dependencies=[
+    Depends(limit_dependency)])
 async def get_current_user_group(
   user: Annotated[dict, Security(get_current_user, scopes=["student", "teacher"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
@@ -116,7 +121,9 @@ async def get_current_user_group(
   status_code=status.HTTP_200_OK,
   operation_id="ReadAllGroups",
   response_model=Dict[str, List[GroupBase]],
-  dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
+  dependencies=[
+    Security(get_current_user, scopes=["teacher", "admin"]),
+    Depends(limit_dependency)])
 async def get_groups(
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
 ):
@@ -136,7 +143,9 @@ async def get_groups(
   status_code=status.HTTP_200_OK,
   operation_id="ReadGroupByName",
   response_model=GroupBase,
-  dependencies=[Security(get_current_user, scopes=["teacher", "admin"]), Depends(limit_dependency)])
+  dependencies=[
+    Security(get_current_user, scopes=["teacher", "admin"]),
+    Depends(limit_dependency)])
 async def get_group(
   group: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
@@ -165,7 +174,9 @@ async def get_group(
 @router.delete("/{group}",
   status_code=status.HTTP_204_NO_CONTENT,
   operation_id="DeleteGroupByName",
-  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
+  dependencies=[
+    Security(get_current_user, scopes=["admin"]),
+    Depends(limit_dependency)])
 async def delete_group(
   group: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]

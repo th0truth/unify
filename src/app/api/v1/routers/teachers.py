@@ -8,8 +8,13 @@ from fastapi import (
   Path,
   Body
 )
+
 from core.schemas.group import GroupBase
-from core.schemas.teacher import TeacherBase, TeacherCreate, TeacherGroup
+from core.schemas.teacher import (
+  TeacherBase,
+  TeacherCreate,
+  TeacherGroup
+)
 from core.database import MongoClient
 from api.dependencies import (
   get_mongo_client,
@@ -20,10 +25,13 @@ from crud import UserCRUD, BaseCRUD
 
 router = APIRouter(tags=["Teachers"])
 
+
 @router.post("",
   status_code=status.HTTP_201_CREATED,
   operation_id="CreateTeacher",
-  dependencies=[Security(get_current_user, scopes=["admin"]), Depends(limit_dependency)])
+  dependencies=[
+    Security(get_current_user, scopes=["admin"]),
+    Depends(limit_dependency)])
 async def create_teacher(
   create_teacher: Annotated[TeacherCreate, Body()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]
@@ -49,7 +57,8 @@ async def create_teacher(
   response_model=List,
   status_code=status.HTTP_200_OK,
   operation_id="ReadAssignedDisicplines",
-  dependencies=[Depends(limit_dependency)])
+  dependencies=[
+    Depends(limit_dependency)])
 async def get_assigned_disiciplines(
   group: Annotated[str, Path()],
   user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
@@ -88,7 +97,8 @@ async def get_assigned_disiciplines(
   status_code=status.HTTP_200_OK,
   operation_id="ReadAssignedGroups",
   response_model=Dict[str, List[TeacherGroup]],
-  dependencies=[Depends(limit_dependency)])
+  dependencies=[
+    Depends(limit_dependency)])
 async def get_assigned_groups(
   user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)]

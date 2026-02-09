@@ -5,9 +5,11 @@ from .user import UserBase
 from .group import LocalizedGroup
 from .etc import PASSWORDstr
 
+
 class TeacherBase(UserBase):
   disciplines: list
   specialities: list
+
 
 class TeacherCreate(TeacherBase):
   scopes: list = [
@@ -16,6 +18,7 @@ class TeacherCreate(TeacherBase):
   role: str = "teachers"
   acc_date: datetime
   password: PASSWORDstr
+
 
 class TeacherGroup(BaseModel):
   degree: str

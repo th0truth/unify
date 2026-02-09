@@ -23,16 +23,18 @@ from redis.asyncio import Redis
 from core.database import MongoClient
 from api.dependencies import (
   get_mongo_client,
-  get_redis_client,
+  get_redis_client
 )
 from api.dependencies import limit_dependency
 from crud import UserCRUD
 
 router = APIRouter(tags=["Authentication"])
 
+
 @router.get("/google",
   operation_id="AuthGoogle",
-  dependencies=[Depends(limit_dependency)])
+  dependencies=[
+    Depends(limit_dependency)])
 async def login_google(
   request: Request
 ):
@@ -47,7 +49,8 @@ async def login_google(
 @router.get("/google/callback",
   status_code=status.HTTP_307_TEMPORARY_REDIRECT,
   operation_id="AuthGoogleCallback",
-  dependencies=[Depends(limit_dependency)])
+  dependencies=[
+    Depends(limit_dependency)])
 async def auth_google(
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
   redis: Annotated[Redis, Depends(get_redis_client)],

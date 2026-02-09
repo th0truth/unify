@@ -6,9 +6,11 @@ from .user import UserInitial
 from .group import LocalizedGroup
 from .etc import MetaFile
 
+
 class ScheduleDate(BaseModel):
   startAt: datetime
   endAt: datetime
+
 
 class ScheduleBase(BaseModel):
   subject: str = Field(max_length=50, min_length=1)
@@ -23,6 +25,7 @@ class ScheduleCreate(ScheduleBase):
   group: LocalizedGroup
   date: str
 
+
 class ScheduleUpdate(BaseModel):
   subject: Optional[str] = None
   position: Optional[int] = None
@@ -30,6 +33,7 @@ class ScheduleUpdate(BaseModel):
   date: Optional[str] = None
   topic: Optional[str] = None
   homework: Optional[str] = None
+
 
 class SchedulePrivate(ScheduleCreate):
   teacher: Optional[UserInitial] = None

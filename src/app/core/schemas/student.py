@@ -4,6 +4,7 @@ from .user import UserBase
 from .etc import PASSWORDstr
 from .group import LocalizedGroup
 
+
 class StudentBase(UserBase):
   speciality: str
   degree: str
@@ -12,6 +13,7 @@ class StudentBase(UserBase):
   start_of_study: str
   complete_of_study: str
   class_teacher_edbo: int
+
 
 class StudentCreate(StudentBase):
   scopes: list = [

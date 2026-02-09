@@ -17,11 +17,12 @@ import uuid
 
 from core.logger import logger
 from core.config import settings
+
 from core.security.utils import convert_size
 from core.schemas.schedule import (
   ScheduleCreate,
   ScheduleUpdate,
-  SchedulePrivate,
+  SchedulePrivate
 )
 from core.schemas.user import UserInitial, UserBase
 from core.schemas.student import StudentBase
@@ -46,8 +47,8 @@ cloudinary.config(
   status_code=status.HTTP_201_CREATED,
   operation_id="CreateLesson",
   response_model=SchedulePrivate,
-  dependencies=[Depends(limit_dependency)],
-)
+  dependencies=[
+    Depends(limit_dependency)])
 async def create_lesson(
   schedule: Annotated[ScheduleCreate, Body()],
   user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
@@ -97,8 +98,8 @@ async def create_lesson(
   operation_id="GetMySchedule",
   response_model=List[SchedulePrivate],
   response_model_exclude_none=True,
-  dependencies=[Depends(limit_dependency)],
-)
+  dependencies=[
+    Depends(limit_dependency)])
 async def get_my_schedule(
   user: Annotated[dict, Security(get_current_user, scopes=["student", "teacher"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -165,10 +166,8 @@ async def get_my_schedule(
   response_model=List[SchedulePrivate],
   response_model_exclude_none=True,
   dependencies=[
-      Security(get_current_user, scopes=["teacher", "admin"]),
-      Depends(limit_dependency),
-  ],
-)
+    Security(get_current_user, scopes=["teacher", "admin"]),
+    Depends(limit_dependency)])
 async def get_group_schedule(
   group: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -188,9 +187,7 @@ async def get_group_schedule(
   response_model_exclude_none=True,
   dependencies=[
       Security(get_current_user, scopes=["teacher", "admin"]),
-      Depends(limit_dependency),
-  ],
-)
+      Depends(limit_dependency)])
 async def get_lesson_by_id(
   lesson_id: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -211,8 +208,8 @@ async def get_lesson_by_id(
 @router.patch("/lessons/{lesson_id}",
   status_code=status.HTTP_200_OK,
   operation_id="UpdateLesson",
-  dependencies=[Depends(limit_dependency)],
-)
+  dependencies=[
+    Depends(limit_dependency)])
 async def update_lesson(
   lesson_id: Annotated[str, Path()],
   schedule_update: Annotated[ScheduleUpdate, Body()],
@@ -251,9 +248,7 @@ async def update_lesson(
   operation_id="DeleteLesson",
   dependencies=[
       Security(get_current_user, scopes=["teacher", "admin"]),
-      Depends(limit_dependency),
-  ],
-)
+      Depends(limit_dependency)])
 async def delete_lesson(
   lesson_id: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -276,8 +271,8 @@ async def delete_lesson(
   operation_id="UploadAttachments",
   response_model=List[MetaFile],
   response_model_exclude_none=True,
-  dependencies=[Depends(limit_dependency)],
-)
+  dependencies=[
+    Depends(limit_dependency)])
 async def upload_attachments(
   lesson_id: Annotated[str, Path()],
   files: Annotated[List[UploadFile], File()],
@@ -351,8 +346,8 @@ async def upload_attachments(
 @router.delete("/lessons/{lesson_id}/attachments/{file_id}",
   status_code=status.HTTP_200_OK,
   operation_id="DeleteAttachment",
-  dependencies=[Depends(limit_dependency)],
-)
+  dependencies=[
+    Depends(limit_dependency)])
 async def delete_attachment(
   lesson_id: Annotated[str, Path()],
   file_id: Annotated[str, Path()],

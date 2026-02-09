@@ -65,3 +65,4 @@ class MongoClient(DBConnection):
         logger.error({"msg": "[x] Error closing MongoDB connection.", "detail": err})
       finally:
         cls._client = None
+

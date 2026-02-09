@@ -11,6 +11,7 @@ from fastapi import (
 import json
 
 from core.config import settings
+
 from core.schemas.token import TokenBase, TokenPayload
 from core.security.jwt import OAuthJWTBearer
 from redis.asyncio import Redis
@@ -18,18 +19,20 @@ from core.database import MongoClient
 from api.dependencies import (
   get_mongo_client,
   get_redis_client,
-  get_current_user,
+  get_current_user
 )
 from api.dependencies import limit_dependency
 from crud import UserCRUD
 
 router = APIRouter(tags=["Authentication"])
 
+
 @router.post("/login",
   status_code=status.HTTP_200_OK,
   operation_id="AuthLogin",
   response_model=TokenPayload,
-  dependencies=[Depends(limit_dependency)])
+  dependencies=[
+    Depends(limit_dependency)])
 async def login(
   form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -63,7 +66,9 @@ async def login(
   status_code=status.HTTP_200_OK,
   operation_id="AuthValidateToken",
   response_model=TokenPayload,
-  dependencies=[Depends(get_current_user), Depends(limit_dependency)])
+  dependencies=[
+    Depends(get_current_user),
+    Depends(limit_dependency)])
 async def auth_token(
   token: Annotated[TokenBase, Header(alias="Authorization")],
   redis: Annotated[Redis, Depends(get_redis_client)],
@@ -104,7 +109,9 @@ async def auth_token(
 @router.post("/logout",
   status_code=status.HTTP_200_OK,
   operation_id="LogoutUser",
-  dependencies=[Depends(get_current_user), Depends(limit_dependency)])
+  dependencies=[
+    Depends(get_current_user),
+    Depends(limit_dependency)])
 async def logout(
   token: Annotated[TokenBase, Header()],
   redis: Annotated[Redis, Depends(get_redis_client)]
