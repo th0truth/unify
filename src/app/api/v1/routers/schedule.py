@@ -29,7 +29,10 @@ from core.schemas.student import StudentBase
 from core.schemas.teacher import TeacherBase
 from core.schemas.etc import MetaFile
 from core.database import MongoClient
-from api.dependencies import get_mongo_client, get_current_user
+from api.dependencies import (
+  get_mongo_client,
+  get_current_user
+)
 from api.dependencies import limit_dependency
 from crud import StudentCRUD
 
@@ -47,25 +50,32 @@ cloudinary.config(
   status_code=status.HTTP_201_CREATED,
   operation_id="CreateLesson",
   response_model=SchedulePrivate,
+  response_model_exclude_none=True,
   dependencies=[
     Depends(limit_dependency)])
 async def create_lesson(
   schedule: Annotated[ScheduleCreate, Body()],
-  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher", "admin"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
 ):
   """
   Create a new lesson.
   """
-  teacher = TeacherBase.model_validate(user)
+  role = user.get("role")
+  match role:
+    case "teachers":
+      teacher = TeacherBase.model_validate(user)
 
-  # Check if teacher's subject matches the discipline.
-  if schedule.subject not in teacher.disciplines:
-    raise HTTPException(
-      status_code=status.HTTP_403_FORBIDDEN,
-      detail="You don't have access to this discipline.",
-    )
-  
+      # Check if teacher's subject matches the discipline.
+      if schedule.subject not in teacher.disciplines:
+        raise HTTPException(
+          status_code=status.HTTP_403_FORBIDDEN,
+          detail="You don't have access to this discipline.",
+        )
+      
+    case "admins":
+      pass
+
   # Find out the specified group.
   groups_db = mongo.get_database("groups")
   group_found = None
@@ -80,7 +90,7 @@ async def create_lesson(
 
   schedule_private = SchedulePrivate(
     **schedule.model_dump(),
-    teacher_edbo=teacher.edbo_id,
+    teacher_edbo=user.get("edbo_id"),
     lesson_id=str(uuid.uuid4().hex),
   )
 
@@ -109,7 +119,6 @@ async def get_my_schedule(
   """
   schedule_db = mongo.get_database("schedule")
   role = user.get("role")
-
   match role:
     case "students":
       student = StudentBase.model_validate(user)
@@ -213,21 +222,27 @@ async def get_lesson_by_id(
 async def update_lesson(
   lesson_id: Annotated[str, Path()],
   schedule_update: Annotated[ScheduleUpdate, Body()],
-  user: Annotated[dict, Security(get_current_user, scopes=["teacher"])],
+  user: Annotated[dict, Security(get_current_user, scopes=["teacher", "admin"])],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
 ):
   """
   Update a lesson by ID.
   """
-  teacher = TeacherBase.model_validate(user)
-
   schedule_db = mongo.get_database("schedule")
+  role = user.get("role")
+  match role:
+    case "teachers":
+      teacher = TeacherBase.model_validate(user)
 
-  if schedule_update.subject and schedule_update.subject not in teacher.disciplines:
-    raise HTTPException(
-      status_code=status.HTTP_403_FORBIDDEN,
-      detail="You don't have access to this discipline.",
-    )
+      if schedule_update.subject and schedule_update.subject not in teacher.disciplines:
+        raise HTTPException(
+          status_code=status.HTTP_403_FORBIDDEN,
+          detail="You don't have access to this discipline.",
+        )
+    
+    case "admins":
+      pass
+
 
   lesson = await schedule_db["lessons"].find_one_and_update(
     filter={"lesson_id": lesson_id},
@@ -247,8 +262,8 @@ async def update_lesson(
   status_code=status.HTTP_204_NO_CONTENT,
   operation_id="DeleteLesson",
   dependencies=[
-      Security(get_current_user, scopes=["teacher", "admin"]),
-      Depends(limit_dependency)])
+    Security(get_current_user, scopes=["teacher", "admin"]),
+    Depends(limit_dependency)])
 async def delete_lesson(
   lesson_id: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -272,7 +287,8 @@ async def delete_lesson(
   response_model=List[MetaFile],
   response_model_exclude_none=True,
   dependencies=[
-    Depends(limit_dependency)])
+    Depends(limit_dependency)],
+  deprecated=True)
 async def upload_attachments(
   lesson_id: Annotated[str, Path()],
   files: Annotated[List[UploadFile], File()],
@@ -347,7 +363,8 @@ async def upload_attachments(
   status_code=status.HTTP_200_OK,
   operation_id="DeleteAttachment",
   dependencies=[
-    Depends(limit_dependency)])
+    Depends(limit_dependency)],
+  deprecated=True)
 async def delete_attachment(
   lesson_id: Annotated[str, Path()],
   file_id: Annotated[str, Path()],
