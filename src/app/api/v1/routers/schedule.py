@@ -34,7 +34,12 @@ from api.dependencies import (
   get_current_user
 )
 from api.dependencies import limit_dependency
-from crud import StudentCRUD
+from crud import (
+  ScheduleCRUD,
+  GroupCRUD,
+  StudentCRUD,
+  UserCRUD
+)
 
 router = APIRouter(tags=["Schedule"])
 
@@ -78,12 +83,7 @@ async def create_lesson(
 
   # Find out the specified group.
   groups_db = mongo.get_database("groups")
-  group_found = None
-  for degree in await groups_db.list_collection_names():
-    if group_found := await groups_db[degree].find_one({"group.en": schedule.group.en}):
-      break
-
-  if not group_found:
+  if not await GroupCRUD(groups_db).get_by_name(schedule.group.en):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND, detail="Group not found."
     )
@@ -96,9 +96,7 @@ async def create_lesson(
 
   # Insert the lesson to the MongoDB database
   schedule_db = mongo.get_database("schedule")
-  await schedule_db["lessons"].insert_one(
-    schedule_private.model_dump(mode="python", exclude_none=True)
-  )
+  await ScheduleCRUD(schedule_db).create(schedule_private.model_dump(mode="python", exclude_none=True))
 
   return schedule_private
 
@@ -123,46 +121,34 @@ async def get_my_schedule(
     case "students":
       student = StudentBase.model_validate(user)
 
-      try:
-        # Find schedule in MongoDB
-        schedule = await schedule_db["lessons"].find({"group.en": student.group.en}).to_list()
-
-        # Get grades
-        grades_db = mongo.get_database("grades")
-        grades_doc = await StudentCRUD(grades_db).get_grades(
-          edbo_id=student.edbo_id, group=student.group.en
-        )
-      
-        lesson = {}
-        users_db = mongo.get_database("users")
-        for lesson in schedule:
-          teacher_doc = await users_db["teachers"].find_one({"edbo_id": lesson.pop("teacher_edbo")})
-          updated_lesson = {
-            **lesson,
-            "teacher": UserInitial.model_validate(teacher_doc).model_dump(),
-            "grade": grades_doc.get(lesson.get("subject"), {}).get("grades", {}).get(lesson.get("date"))
-          }
-          lesson.clear()
-          lesson.update(SchedulePrivate.model_validate(updated_lesson).model_dump())
-
-        return schedule
-
-      except Exception as err:
-        logger.error({"detail": str(err)}, exc_info=True)
-        raise HTTPException(
-          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-          detail="Failed to get user's schedule.",
-        )
-
+      # Find schedule in MongoDB
+      schedule = await ScheduleCRUD(schedule_db).get_by_group(student.group.en)
+   
+      # Get grades
+      grades_db = mongo.get_database("grades")
+      grades_doc = await StudentCRUD(grades_db).get_grades(
+        edbo_id=student.edbo_id,
+        group=student.group.en
+      )
+   
+      lesson = {}
+      users_db = mongo.get_database("users")
+      for lesson in schedule:
+        teacher_doc = await UserCRUD(users_db).find(username=lesson.pop("teacher_edbo"), exclude=["password", "scopes"])
+        updated_lesson = {
+          **lesson,
+          "teacher": UserInitial.model_validate(teacher_doc).model_dump(),
+          "grade": grades_doc.get(lesson.get("subject"), {}).get("grades", {}).get(lesson.get("date"))
+        }
+        lesson.clear()
+        lesson.update(SchedulePrivate.model_validate(updated_lesson).model_dump())
+    
+      return schedule
+    
     case "teachers":
       teacher = UserBase.model_validate(user)
 
-      schedule = (
-        await schedule_db["lessons"]
-          .find({"teacher_edbo": teacher.edbo_id})
-          .to_list()
-        )
-
+      schedule = await ScheduleCRUD(schedule_db).get_by_teacher(teacher.edbo_id)
       for lesson in schedule:
         lesson.update({"teacher": UserInitial.model_validate(user).model_dump()})
 
@@ -185,7 +171,7 @@ async def get_group_schedule(
   Get group schedule.
   """
   schedule_db = mongo.get_database("schedule")
-  schedule = await schedule_db["lessons"].find({"group.en": group}).to_list()
+  schedule = await ScheduleCRUD(schedule_db).get_by_group(group)
   return schedule
 
 
@@ -195,8 +181,8 @@ async def get_group_schedule(
   response_model=SchedulePrivate,
   response_model_exclude_none=True,
   dependencies=[
-      Security(get_current_user, scopes=["teacher", "admin"]),
-      Depends(limit_dependency)])
+    Security(get_current_user, scopes=["teacher", "admin"]),  
+    Depends(limit_dependency)])
 async def get_lesson_by_id(
   lesson_id: Annotated[str, Path()],
   mongo: Annotated[MongoClient, Depends(get_mongo_client)],
@@ -205,12 +191,7 @@ async def get_lesson_by_id(
   Get lesson by ID.
   """
   schedule_db = mongo.get_database("schedule")
-
-  if not (lesson := await schedule_db["lessons"].find_one({"lesson_id": lesson_id})):
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Lesson not found."
-    )
+  lesson = await ScheduleCRUD(schedule_db).get_by_id(lesson_id)
   return lesson
 
 
@@ -243,17 +224,10 @@ async def update_lesson(
     case "admins":
       pass
 
-
-  lesson = await schedule_db["lessons"].find_one_and_update(
-    filter={"lesson_id": lesson_id},
-    update={"$set": schedule_update.model_dump(exclude_unset=True)},
+  await ScheduleCRUD(schedule_db).update(
+    lesson_id=lesson_id,
+    update=schedule_update.model_dump(exclude_unset=True)
   )
-
-  if not lesson:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail="Lesson not found."
-    )
 
   return {"message": "The lesson has been successfully updated."}
 
@@ -273,10 +247,7 @@ async def delete_lesson(
   """
   schedule_db = mongo.get_database("schedule")
 
-  if not await schedule_db["lessons"].find_one_and_delete({"lesson_id": lesson_id}):
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found."
-    )
+  await ScheduleCRUD(schedule_db).delete(lesson_id)
 
   return {"message": "The lesson has been deleted."}
 
@@ -302,9 +273,7 @@ async def upload_attachments(
 
   schedule_db = mongo.get_database("schedule")
 
-  if not (await schedule_db["lessons"].find_one(
-    filter={"teacher_edbo": teacher.edbo_id, "lesson_id": lesson_id}
-  )):
+  if not (await ScheduleCRUD(schedule_db).exists_for_teacher(lesson_id, teacher.edbo_id)):
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail="Lesson not found."
@@ -347,14 +316,7 @@ async def upload_attachments(
         detail=f"Error attaching files.",
     )
 
-  if not (await schedule_db["lessons"].update_one(
-    filter={"lesson_id": lesson_id},
-    update={"$push": {"attachments": {"$each": attachments}}},
-  )):
-    raise HTTPException(
-      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-      detail="Can't attach your files to the lesson.",
-    )
+  await ScheduleCRUD(schedule_db).add_attachments(lesson_id, attachments)
 
   return attachments
 
@@ -374,18 +336,8 @@ async def delete_attachment(
   """
   Delete an attachment.
   """
-  teacher = TeacherBase.model_validate(user)
-
   schedule_db = mongo.get_database("schedule")
-
-  if not (schedule_lesson := await schedule_db["lessons"].find_one({
-    "teacher_edbo": teacher.edbo_id,
-    "lesson_id": lesson_id,
-    "attachments": {"$elemMatch": {"file_id": file_id}},
-  })):
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found."
-    )
+  schedule_lesson = await ScheduleCRUD(schedule_db).has_attachment(lesson_id, file_id)
 
   file_type = None
   for attachment in schedule_lesson.get("attachments", []):
@@ -415,9 +367,6 @@ async def delete_attachment(
       status_code=status.HTTP_404_NOT_FOUND, detail="File not found in the cloud."
     )
 
-  await schedule_db["lessons"].update_one(
-    filter={"lesson_id": lesson_id},
-    update={"$pull": {"attachments": {"file_id": file_id}}},
-  )
+  await ScheduleCRUD(schedule_db).remove_attachment(lesson_id, file_id)
 
   return {"message": "The file has been successfully detached."}
